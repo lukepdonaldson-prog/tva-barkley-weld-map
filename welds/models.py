@@ -16,7 +16,7 @@ class Weld(models.Model):
     table_6_1_criteria_2 = models.CharField(max_length=200, blank=True)
     table_6_1_criteria_3 = models.CharField(max_length=200, blank=True)
     weld_type = models.CharField(max_length=100, blank=True)
-    weld_size = models.FloatField(null=True, blank=True)
+    weld_size = models.CharField(max_length=50, blank=True, default='')
     wps_number = models.CharField(max_length=100, default='DWPS-SM-Special-B-3-N Rev 0')
     inspection_utsw = models.CharField(max_length=50, blank=True)
     inspection_mt = models.CharField(max_length=50, blank=True)

@@ -39,14 +39,14 @@ class Weld(models.Model):
 
 
 class WeldPhoto(models.Model):
-    """Model representing photos associated with weld inspections."""
-    weld = models.ForeignKey(Weld, on_delete=models.CASCADE, related_name='photos')
-    photo = models.ImageField(upload_to='weld_photos/%Y/%m/%d/')
-    report_number = models.IntegerField()
-    caption = models.CharField(max_length=500, blank=True)
+    """Standalone photo library — filterable by section, report, subfolder."""
+    photo = models.ImageField(upload_to='weld_photos/%Y/%m/%d/', max_length=500)
+    section = models.CharField(max_length=100, blank=True, db_index=True)
+    report_number = models.CharField(max_length=20, blank=True, db_index=True)
+    subfolder = models.CharField(max_length=200, blank=True, db_index=True)
+    description = models.CharField(max_length=500, blank=True)
+    original_filename = models.CharField(max_length=500)
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        import os
-        filename = os.path.basename(self.photo.name) if self.photo else 'no-photo'
-        return f"{self.weld.section} - {filename}"
+        return self.original_filename

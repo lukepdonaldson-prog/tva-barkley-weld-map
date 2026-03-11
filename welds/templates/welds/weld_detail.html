@@ -1,0 +1,151 @@
+{% extends 'welds/base.html' %}
+{% load static %}
+
+{% block title %}Weld {{ weld.weld_id4 }} - Detail{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1>{{ weld.section }} - Weld {{ weld.weld_id4 }}</h1>
+        </div>
+        <div class="col-md-4 text-end">
+            {% if previous_weld %}
+                <a href="{% url 'weld_detail' previous_weld.id %}" class="btn btn-outline-primary">← Previous</a>
+            {% else %}
+                <button class="btn btn-outline-primary" disabled>← Previous</button>
+            {% endif %}
+            
+            {% if next_weld %}
+                <a href="{% url 'weld_detail' next_weld.id %}" class="btn btn-outline-primary">Next →</a>
+            {% else %}
+                <button class="btn btn-outline-primary" disabled>Next →</button>
+            {% endif %}
+            
+            <a href="{% url 'weld_list' %}" class="btn btn-secondary">Back to List</a>
+        </div>
+    </div>
+
+    <!-- Card 1: Location Info -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Location Information</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Report:</strong> {{ weld.report }}</p>
+                    <p><strong>Side:</strong> {{ weld.side }}</p>
+                    <p><strong>Section:</strong> {{ weld.section }}</p>
+                    <p><strong>Weld ID:</strong> {{ weld.weld_id }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Weld ID2:</strong> {{ weld.weld_id2 }}</p>
+                    <p><strong>Weld ID3:</strong> {{ weld.weld_id3 }}</p>
+                    <p><strong>Weld ID4:</strong> {{ weld.weld_id4 }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card 2: Inspection Details -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Inspection Details</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Weld Type:</strong> {{ weld.weld_type }}</p>
+                    <p><strong>Weld Size:</strong> {{ weld.weld_size }}</p>
+                    <p><strong>WPS #:</strong> {{ weld.wps_number }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Table 6.1 Criteria 1:</strong> {{ weld.table_61_criteria_1 }}</p>
+                    <p><strong>Table 6.1 Criteria 2:</strong> {{ weld.table_61_criteria_2 }}</p>
+                    <p><strong>Table 6.1 Criteria 3:</strong> {{ weld.table_61_criteria_3 }}</p>
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-md-6">
+                    <p><strong>Inspection UTSW:</strong> {{ weld.inspection_utsw }}</p>
+                    <p><strong>Inspection MT:</strong> {{ weld.inspection_mt }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Inspector:</strong> {{ weld.inspector }}</p>
+                    <p><strong>Date:</strong> {{ weld.inspection_date|date:"M d, Y" }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card 3: Results & Repair -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Results & Repair</h5>
+        </div>
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <p>
+                        <strong>Pass/Fail:</strong> 
+                        {% if weld.pass_fail == 'Pass' %}
+                            <span class="badge bg-success">Pass</span>
+                        {% elif weld.pass_fail == 'Fail' %}
+                            <span class="badge bg-danger">Fail</span>
+                        {% else %}
+                            <span class="badge bg-secondary">{{ weld.pass_fail }}</span>
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Estimated Repair Length:</strong> {{ weld.estimated_repair_length }}</p>
+                    <p><strong>Total Weld Length:</strong> {{ weld.total_weld_length }}</p>
+                    <p><strong>Corrective Action Taken:</strong> {{ weld.corrective_action_taken }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Repair Welder:</strong> {{ weld.repair_welder }}</p>
+                    <p><strong>Repair Inspection Date:</strong> {{ weld.repair_inspection_date|date:"M d, Y" }}</p>
+                    <p><strong>Weld Process:</strong> {{ weld.weld_process }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card 4: Notes -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Notes</h5>
+        </div>
+        <div class="card-body">
+            <p>{{ weld.note|linebreaks }}</p>
+        </div>
+    </div>
+
+    <!-- Card 5: Photos -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Photos</h5>
+        </div>
+        <div class="card-body">
+            {% if weld.photos.all %}
+                <div class="row">
+                    {% for photo in weld.photos.all %}
+                        <div class="col-md-4 mb-3">
+                            <img src="{{ photo.image.url }}" alt="Weld photo" class="img-fluid rounded">
+                            {% if photo.caption %}
+                                <p class="mt-2 text-muted">{{ photo.caption }}</p>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-muted">No photos available</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

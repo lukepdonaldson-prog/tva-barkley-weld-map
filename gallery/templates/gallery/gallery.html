@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Weld Photo Gallery</title>
+    <style>
+        body { font-family: Arial,sans-serif; margin: 18px; background: #f4f7fa;}
+        .gallery-header {display:flex; justify-content:space-between; align-items:center; margin-bottom: 1em;}
+        .gallery-grid {display: flex; flex-wrap: wrap; gap: 20px;}
+        .photo-card {background:white; padding:10px; border-radius:8px; box-shadow:0 2px 8px #bbb8; width: 230px; text-align: center;}
+        .photo-card img {max-width: 200px; max-height: 170px; border-radius: 6px; margin-bottom: 6px;}
+        .filters {display:flex; flex-wrap:wrap; gap:12px; margin-bottom:20px;}
+        .statblock {color:#033; margin-bottom:1em;}
+        .pagination {margin-top:2em;}
+        .pagination a, .pagination span {margin: 0 3px; padding:4px 10px; text-decoration:none; border-radius:4px; font-size:18px;}
+        .pagination .current {background:#ccc; font-weight:bold;}
+        .copy-btn {border:none; background: #2196F3; color:#fff; cursor:pointer; border-radius:3px; margin-left: 3px;}
+        .download-btn {border:none; background: #4CAF50; color:white; border-radius:3px; cursor:pointer; margin-top:2px;}
+        .large-modal {display:none; position:fixed; top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);align-items:center;justify-content:center;z-index:1000;}
+        .large-modal img {max-height:90vh;max-width:90vw;}
+    </style>
+    <script>
+        function showModal(imgSrc) {
+            var modal = document.getElementById('modal');
+            var modalImg = document.getElementById('modal-img');
+            modalImg.src = imgSrc;
+            modal.style.display = 'flex';
+        }
+        function closeModal() {
+            document.getElementById('modal').style.display = 'none';
+        }
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text);
+        }
+    </script>
+</head>
+<body>
+    <div class="gallery-header">
+        <h2>Weld Photo Gallery</h2>
+        <div class="statblock">
+            <strong>Total photos:</strong> {{ count_all }}<br>
+            <span>
+                <strong>Filtered:</strong> {{ count_filtered }}
+            </span>
+        </div>
+    </div>
+
+    <form method="get" class="filters">
+        <select name="section">
+            <option value="">Section (all)</option>
+            {% for s in sections %}
+            <option value="{{ s }}" {% if selected_section == s %}selected{% endif %}>{{ s }}</option>
+            {% endfor %}
+        </select>
+        <select name="report_number">
+            <option value="">Report # (all)</option>
+            {% for r in reports %}
+            <option value="{{ r }}" {% if selected_report == r %}selected{% endif %}>{{ r }}</option>
+            {% endfor %}
+        </select>
+        <select name="subfolder">
+            <option value="">Subfolder (all)</option>
+            {% for sf in subfolders %}
+            <option value="{{ sf }}" {% if selected_subfolder == sf %}selected{% endif %}>{{ sf }}</option>
+            {% endfor %}
+        </select>
+        <input type="text" name="search" placeholder="Description or filename" value="{{ search }}">
+        <button type="submit">Filter</button>
+    </form>
+
+    <div class="gallery-grid">
+        {% for photo in page_obj %}
+        <div class="photo-card">
+            <div>
+                <img src="{{ photo.photo.url }}" alt="{{ photo.description }}" onclick="showModal(this.src)">
+            </div>
+            <div style="font-size:12.5px;">
+                <b>{{ photo.section }}</b> | Report: {{ photo.report_number }} <button class="copy-btn" onclick="copyToClipboard('{{ photo.section }}')">📋</button>
+            </div>
+            <div style="font-size:12px;"><b>Subfolder:</b> {{ photo.subfolder }}</div>
+            <div style="font-size:12px;" title="{{ photo.original_filename }}">
+                <b>Desc:</b> {{ photo.description|default:photo.original_filename|truncatechars:65 }}
+            </div>
+            <form method="get" action="{{ photo.photo.url }}">
+                <button class="download-btn" type="submit">Download</button>
+            </form>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="pagination">
+        {% if page_obj.has_previous %}
+            <a href="?{% if selected_section %}section={{selected_section}}&{% endif %}{% if selected_report %}report_number={{selected_report}}&{% endif %}{% if selected_subfolder %}subfolder={{selected_subfolder}}&{% endif %}{% if search %}search={{search}}&{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>
+        {% endif %}
+        <span class="current">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+        {% if page_obj.has_next %}
+            <a href="?{% if selected_section %}section={{selected_section}}&{% endif %}{% if selected_report %}report_number={{selected_report}}&{% endif %}{% if selected_subfolder %}subfolder={{selected_subfolder}}&{% endif %}{% if search %}search={{search}}&{% endif %}page={{ page_obj.next_page_number }}">Next</a>
+        {% endif %}
+    </div>
+
+    <div id="modal" class="large-modal" onclick="closeModal()">
+        <img id="modal-img" alt="Large photo" />
+    </div>
+</body>
+</html>

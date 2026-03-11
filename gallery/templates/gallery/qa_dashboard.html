@@ -52,7 +52,8 @@
 <div class="card mb-4">
     <div class="card-body py-3">
         <form method="get" class="filter-row">
-            <div class="row g-2 align-items-end">
+            <!-- Row 1: Section, Report, Pass/Fail, Search -->
+            <div class="row g-2 align-items-end mb-2">
                 <div class="col-6 col-md-3">
                     <select name="section" class="form-select form-select-sm" onchange="this.form.submit()">
                         <option value="">Section (all)</option>
@@ -79,6 +80,25 @@
                 </div>
                 <div class="col-6 col-md-3">
                     <input type="text" name="search" class="form-control form-control-sm" placeholder="Weld ID, inspector, note…" value="{{ search }}">
+                </div>
+            </div>
+            <!-- Row 2: Date From, Date To, Inspector, Buttons -->
+            <div class="row g-2 align-items-end">
+                <div class="col-6 col-md-2">
+                    <label class="form-label form-label-sm mb-0 text-muted" style="font-size:0.75rem;">Date From</label>
+                    <input type="date" name="date_from" class="form-control form-control-sm" value="{{ date_from }}">
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label form-label-sm mb-0 text-muted" style="font-size:0.75rem;">Date To</label>
+                    <input type="date" name="date_to" class="form-control form-control-sm" value="{{ date_to }}">
+                </div>
+                <div class="col-6 col-md-3">
+                    <select name="inspector" class="form-select form-select-sm" onchange="this.form.submit()">
+                        <option value="">All Inspectors</option>
+                        {% for i in inspectors %}
+                        <option value="{{ i }}" {% if selected_inspector == i %}selected{% endif %}>{{ i }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
                 <div class="col-12 col-md-auto d-flex gap-2 flex-wrap">
                     <button type="submit" class="btn btn-primary btn-sm px-3">Filter</button>
@@ -144,7 +164,7 @@
     <ul class="pagination justify-content-center flex-wrap">
         {% if welds.has_previous %}
             <li class="page-item">
-                <a class="page-link" href="?page={{ welds.previous_page_number }}{% if selected_section %}&section={{ selected_section }}{% endif %}{% if selected_report %}&report={{ selected_report }}{% endif %}{% if selected_status %}&pass_fail={{ selected_status }}{% endif %}{% if search %}&search={{ search }}{% endif %}">← Prev</a>
+                <a class="page-link" href="?page={{ welds.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">← Prev</a>
             </li>
         {% endif %}
         <li class="page-item disabled">
@@ -152,7 +172,7 @@
         </li>
         {% if welds.has_next %}
             <li class="page-item">
-                <a class="page-link" href="?page={{ welds.next_page_number }}{% if selected_section %}&section={{ selected_section }}{% endif %}{% if selected_report %}&report={{ selected_report }}{% endif %}{% if selected_status %}&pass_fail={{ selected_status }}{% endif %}{% if search %}&search={{ search }}{% endif %}">Next →</a>
+                <a class="page-link" href="?page={{ welds.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Next →</a>
             </li>
         {% endif %}
     </ul>

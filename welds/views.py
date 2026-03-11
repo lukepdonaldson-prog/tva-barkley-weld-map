@@ -1,10 +1,14 @@
+from datetime import date
+
 from django.shortcuts import render, get_object_or_404
 from django.core.paginator import Paginator
 from django.db.models import Sum, Count, Q
 from welds.models import Weld
+from welds.export_utils import generate_excel_response, generate_pdf_response
 
-def weld_list(request):
-    # Get filter parameters from GET request
+
+def _apply_weld_filters(request):
+    """Apply weld_list GET filters and return a queryset."""
     side = request.GET.get('side')
     section = request.GET.get('section')
     weld_id = request.GET.get('weld_id')
@@ -13,10 +17,7 @@ def weld_list(request):
     report = request.GET.get('report')
     search = request.GET.get('search')
 
-    # Start with all welds
     queryset = Weld.objects.all()
-
-    # Apply filters
     if side:
         queryset = queryset.filter(side=side)
     if section:
@@ -37,6 +38,22 @@ def weld_list(request):
             Q(inspector__icontains=search) |
             Q(note__icontains=search)
         )
+    return queryset
+
+
+def _build_filters_desc(request):
+    """Return a human-readable string describing active filters."""
+    parts = []
+    for key, label in [('side', 'Side'), ('section', 'Section'), ('weld_type', 'Type'),
+                       ('pass_fail', 'Status'), ('report', 'Report'), ('search', 'Search')]:
+        val = request.GET.get(key)
+        if val:
+            parts.append(f"{label}: {val}")
+    return ", ".join(parts) if parts else "None"
+
+
+def weld_list(request):
+    queryset = _apply_weld_filters(request)
 
     # Calculate aggregates, case-insensitive for pass/fail
     aggregates = queryset.aggregate(
@@ -70,6 +87,7 @@ def weld_list(request):
 
     return render(request, 'welds/weld_list.html', context)
 
+
 def weld_detail(request, pk):
     # Get single weld
     weld = get_object_or_404(Weld, pk=pk)
@@ -85,3 +103,21 @@ def weld_detail(request, pk):
     }
 
     return render(request, 'welds/weld_detail.html', context)
+
+
+def export_welds_excel(request):
+    queryset = _apply_weld_filters(request)
+    filename = f"weld_data_export_{date.today().strftime('%Y-%m-%d')}.xlsx"
+    return generate_excel_response(queryset, filename)
+
+
+def export_welds_pdf(request):
+    queryset = _apply_weld_filters(request)
+    filename = f"weld_report_{date.today().strftime('%Y-%m-%d')}.pdf"
+    filters_desc = _build_filters_desc(request)
+    return generate_pdf_response(
+        queryset,
+        filename,
+        title="TVA Barkley Dam \u2014 Weld Inspection Report",
+        filters_desc=filters_desc,
+    )

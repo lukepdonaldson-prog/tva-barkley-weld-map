@@ -1,14 +1,16 @@
+from datetime import date
+
 from django.shortcuts import render
 from welds.models import Weld, WeldPhoto
 from django.core.paginator import Paginator
 from django.db.models import Q
 from django.contrib.auth.decorators import login_required
+from welds.export_utils import generate_excel_response, generate_pdf_response
 
-@login_required
-def qa_dashboard(request):
+
+def _apply_qa_filters(request):
+    """Apply qa_dashboard GET filters and return a queryset."""
     welds = Weld.objects.all()
-
-    # Filtering
     section = request.GET.get('section', '')
     report = request.GET.get('report', '')
     pass_fail = request.GET.get('pass_fail', '')
@@ -26,14 +28,34 @@ def qa_dashboard(request):
             Q(inspector__icontains=search) |
             Q(note__icontains=search)
         )
+    return welds.order_by('section', 'weld_id4')
+
+
+def _build_qa_filters_desc(request):
+    """Return a human-readable string describing active QA dashboard filters."""
+    parts = []
+    for key, label in [('section', 'Section'), ('report', 'Report'),
+                       ('pass_fail', 'Status'), ('search', 'Search')]:
+        val = request.GET.get(key)
+        if val:
+            parts.append(f"{label}: {val}")
+    return ", ".join(parts) if parts else "None"
+
+
+@login_required
+def qa_dashboard(request):
+    welds = _apply_qa_filters(request)
+
+    section = request.GET.get('section', '')
+    report = request.GET.get('report', '')
+    pass_fail = request.GET.get('pass_fail', '')
+    search = request.GET.get('search', '')
 
     count_all = Weld.objects.count()
     count_filtered = welds.count()
 
     pass_count = welds.filter(pass_fail__iexact='pass').count()
     fail_count = welds.filter(pass_fail__iexact='fail').count()
-
-    welds = welds.order_by('section', 'weld_id4')
 
     paginator = Paginator(welds, 50)
     page_number = request.GET.get('page')
@@ -100,3 +122,23 @@ def photo_gallery(request):
         'selected_subfolder': subfolder,
         'search': search,
     })
+
+
+@login_required
+def export_qa_excel(request):
+    queryset = _apply_qa_filters(request)
+    filename = f"qa_dashboard_export_{date.today().strftime('%Y-%m-%d')}.xlsx"
+    return generate_excel_response(queryset, filename)
+
+
+@login_required
+def export_qa_pdf(request):
+    queryset = _apply_qa_filters(request)
+    filename = f"qa_dashboard_report_{date.today().strftime('%Y-%m-%d')}.pdf"
+    filters_desc = _build_qa_filters_desc(request)
+    return generate_pdf_response(
+        queryset,
+        filename,
+        title="TVA Barkley Dam \u2014 Weld Inspection Report",
+        filters_desc=filters_desc,
+    )

@@ -14,6 +14,7 @@ The script:
   2. Extracts it to <output>/python/
   3. Downloads and installs pip into the embedded Python
   4. Enables site-packages by uncommenting `import site` in python312._pth
+     and adds `../app` so the embedded Python can find the Django project
   5. Installs Django, Pillow, openpyxl, reportlab, whitenoise into the
      embedded Python's site-packages
   6. Copies the Django project into <output>/app/
@@ -185,11 +186,25 @@ def build(output_dir: Path, python_version: str) -> None:
     if pth_file.exists():
         content = pth_file.read_text(encoding="utf-8")
         new_content = content.replace("#import site", "import site")
-        if new_content != content:
+        site_changed = new_content != content
+        # Add ../app so the embedded Python can find the Django project modules.
+        # The presence of a ._pth file causes Python to ignore PYTHONPATH, so
+        # this relative path entry is the reliable way to make the weldmap
+        # package discoverable from <output>/python/.
+        app_added = False
+        if "../app" not in new_content.splitlines():
+            new_content = new_content.rstrip("\n") + "\n../app\n"
+            app_added = True
+        if site_changed or app_added:
             pth_file.write_text(new_content, encoding="utf-8")
-            log(f"Enabled site-packages in {pth_file.name}")
+            parts = []
+            if site_changed:
+                parts.append("enabled site-packages")
+            if app_added:
+                parts.append("added ../app path")
+            log(f"Updated {pth_file.name}: {', '.join(parts)}")
         else:
-            log(f"site-packages already enabled in {pth_file.name}")
+            log(f"{pth_file.name} already configured (site-packages enabled, ../app present)")
     else:
         log("WARNING: Could not find ._pth file — site-packages may not be enabled")
 

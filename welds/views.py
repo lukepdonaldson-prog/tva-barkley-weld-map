@@ -1,5 +1,6 @@
 from datetime import date
 
+from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, get_object_or_404
 from django.core.paginator import Paginator
 from django.db.models import Sum, Count, Q
@@ -62,6 +63,7 @@ def _build_filters_desc(request):
     return ", ".join(parts) if parts else "None"
 
 
+@login_required
 def weld_list(request):
     queryset = _apply_weld_filters(request)
 
@@ -102,6 +104,7 @@ def weld_list(request):
     return render(request, 'welds/weld_list.html', context)
 
 
+@login_required
 def weld_detail(request, pk):
     # Get single weld
     weld = get_object_or_404(Weld, pk=pk)
@@ -119,12 +122,14 @@ def weld_detail(request, pk):
     return render(request, 'welds/weld_detail.html', context)
 
 
+@login_required
 def export_welds_excel(request):
     queryset = _apply_weld_filters(request)
     filename = f"weld_data_export_{date.today().strftime('%Y-%m-%d')}.xlsx"
     return generate_excel_response(queryset, filename)
 
 
+@login_required
 def export_welds_pdf(request):
     queryset = _apply_weld_filters(request)
     filename = f"weld_report_{date.today().strftime('%Y-%m-%d')}.pdf"

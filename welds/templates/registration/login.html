@@ -1,0 +1,40 @@
+{% extends 'welds/base.html' %}
+
+{% block title %}Login — TVA Barkley{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-5 col-lg-4">
+        <div class="card shadow">
+            <div class="card-header text-center" style="background: var(--color-primary); color: white;">
+                <h4 class="mb-0">🔒 TVA Barkley Weld Map</h4>
+                <small>Sign in to continue</small>
+            </div>
+            <div class="card-body p-4">
+                {% if form.errors %}
+                <div class="alert alert-danger">
+                    Invalid username or password. Please try again.
+                </div>
+                {% endif %}
+
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="id_username" class="form-label">Username</label>
+                        <input type="text" name="username" id="id_username" class="form-control" autofocus required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_password" class="form-label">Password</label>
+                        <input type="password" name="password" id="id_password" class="form-control" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Sign In</button>
+                    <input type="hidden" name="next" value="{{ next }}">
+                </form>
+            </div>
+            <div class="card-footer text-center text-muted" style="font-size: 0.85rem;">
+                TVA Barkley Dam — Weld Inspection System
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

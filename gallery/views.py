@@ -132,6 +132,7 @@ def _apply_photo_filters(request):
     return photos.order_by('-uploaded_at')
 
 
+@login_required
 def photo_gallery(request):
     photos = _apply_photo_filters(request)
 
@@ -186,6 +187,7 @@ def export_qa_pdf(request):
     )
 
 
+@login_required
 def export_photos_excel(request):
     """Export filtered photo metadata as an .xlsx file."""
     photos = _apply_photo_filters(request)
@@ -227,6 +229,7 @@ def export_photos_excel(request):
     return response
 
 
+@login_required
 def export_photos_zip(request):
     """Download all filtered photos as a ZIP file."""
     photos = _apply_photo_filters(request)

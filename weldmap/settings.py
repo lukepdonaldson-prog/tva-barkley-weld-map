@@ -4,10 +4,17 @@ Django settings for weldmap project.
 import os
 from pathlib import Path
 
-import dj_database_url
+try:
+    import dj_database_url
+    _HAS_DJ_DATABASE_URL = True
+except ImportError:
+    _HAS_DJ_DATABASE_URL = False
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Portable mode: set PORTABLE_MODE=1 env var when running from the portable package
+PORTABLE_MODE = os.environ.get('PORTABLE_MODE', '0') in ('1', 'true', 'yes')
 
 # SECURITY: Use environment variable in production, fallback for local dev
 SECRET_KEY = os.environ.get(
@@ -73,9 +80,9 @@ WSGI_APPLICATION = 'weldmap.wsgi.application'
 
 # Database
 # Use DATABASE_URL in production (Railway sets this automatically)
-# Falls back to SQLite for local development
+# Falls back to SQLite for local development and portable mode
 
-if os.environ.get('DATABASE_URL'):
+if not PORTABLE_MODE and _HAS_DJ_DATABASE_URL and os.environ.get('DATABASE_URL'):
     DATABASES = {
         'default': dj_database_url.config(
             default=os.environ.get('DATABASE_URL'),

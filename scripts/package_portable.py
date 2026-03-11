@@ -269,6 +269,7 @@ def build(output_dir: Path, python_version: str) -> None:
     env = os.environ.copy()
     env["PORTABLE_MODE"] = "1"
     env["DJANGO_SETTINGS_MODULE"] = "weldmap.settings"
+    env["PYTHONPATH"] = str(app_dir)
     # Suppress the prompt
     run(
         [python_exe, "manage.py", "collectstatic", "--noinput"],

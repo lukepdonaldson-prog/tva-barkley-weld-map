@@ -198,9 +198,11 @@
                 <div class="col-6 col-md-3">
                     <input type="text" name="search" class="form-control form-control-sm" placeholder="Description or filename…" value="{{ search }}">
                 </div>
-                <div class="col-12 col-md-auto d-flex gap-2">
+                <div class="col-12 col-md-auto d-flex gap-2 flex-wrap">
                     <button type="submit" class="btn btn-primary btn-sm px-3">Filter</button>
                     <a href="{% url 'photo_gallery' %}" class="btn btn-outline-secondary btn-sm px-3">Clear</a>
+                    <button type="button" class="btn btn-success btn-sm px-3" onclick="exportPhotos('excel')">📊 Export Excel</button>
+                    <button type="button" class="btn btn-warning btn-sm px-3" onclick="exportPhotos('zip')">📦 Download ZIP</button>
                 </div>
             </div>
         </form>
@@ -279,6 +281,14 @@
         navigator.clipboard.writeText(text).catch(() => {
             alert('Section copied: ' + text);
         });
+    }
+    function exportPhotos(type) {
+        const params = new URLSearchParams(new FormData(document.querySelector('.filter-row')));
+        params.delete('page');
+        const url = type === 'excel'
+            ? "{% url 'export_photos_excel' %}"
+            : "{% url 'export_photos_zip' %}";
+        window.location.href = url + '?' + params.toString();
     }
 </script>
 {% endblock %}

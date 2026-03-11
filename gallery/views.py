@@ -1,11 +1,17 @@
+import io
+import zipfile
 from datetime import date
 
+from django.http import HttpResponse
 from django.shortcuts import render
 from welds.models import Weld, WeldPhoto
 from django.core.paginator import Paginator
 from django.db.models import Q
 from django.contrib.auth.decorators import login_required
 from welds.export_utils import generate_excel_response, generate_pdf_response
+
+import openpyxl
+from openpyxl.styles import Font, PatternFill, Alignment
 
 
 def _apply_qa_filters(request):
@@ -80,9 +86,9 @@ def qa_dashboard(request):
         'search': search,
     })
 
-def photo_gallery(request):
+def _apply_photo_filters(request):
+    """Apply photo gallery GET filters and return a queryset."""
     photos = WeldPhoto.objects.all()
-
     section = request.GET.get('section', '')
     report = request.GET.get('report_number', '')
     subfolder = request.GET.get('subfolder', '')
@@ -99,8 +105,16 @@ def photo_gallery(request):
             Q(description__icontains=search) |
             Q(original_filename__icontains=search)
         )
+    return photos.order_by('-uploaded_at')
 
-    photos = photos.order_by('-uploaded_at')
+
+def photo_gallery(request):
+    photos = _apply_photo_filters(request)
+
+    section = request.GET.get('section', '')
+    report = request.GET.get('report_number', '')
+    subfolder = request.GET.get('subfolder', '')
+    search = request.GET.get('search', '')
 
     paginator = Paginator(photos, 50)
     page_number = request.GET.get('page')
@@ -142,3 +156,65 @@ def export_qa_pdf(request):
         title="TVA Barkley Dam \u2014 Weld Inspection Report",
         filters_desc=filters_desc,
     )
+
+
+def export_photos_excel(request):
+    """Export filtered photo metadata as an .xlsx file."""
+    photos = _apply_photo_filters(request)
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Photo Library"
+
+    headers = ["Section", "Report #", "Subfolder", "Original Filename", "Description", "Uploaded Date"]
+    header_fill = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
+    header_font = Font(bold=True, color="FFFFFF")
+
+    for col_idx, header in enumerate(headers, start=1):
+        cell = ws.cell(row=1, column=col_idx, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+
+    for photo in photos:
+        ws.append([
+            photo.section,
+            photo.report_number,
+            photo.subfolder,
+            photo.original_filename,
+            photo.description,
+            photo.uploaded_at.strftime('%Y-%m-%d %H:%M') if photo.uploaded_at else '',
+        ])
+
+    for col in ws.columns:
+        max_length = max((len(str(cell.value)) if cell.value else 0) for cell in col)
+        ws.column_dimensions[col[0].column_letter].width = min(max_length + 4, 60)
+
+    filename = f"photo_library_export_{date.today().strftime('%Y-%m-%d')}.xlsx"
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    wb.save(response)
+    return response
+
+
+def export_photos_zip(request):
+    """Download all filtered photos as a ZIP file."""
+    photos = _apply_photo_filters(request)
+
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for photo in photos:
+            try:
+                file_path = photo.photo.path
+                archive_name = f"{photo.section}/{photo.subfolder}/{photo.original_filename}"
+                zf.write(file_path, archive_name)
+            except (FileNotFoundError, OSError):
+                continue
+
+    buffer.seek(0)
+    filename = f"weld_photos_{date.today().strftime('%Y-%m-%d')}.zip"
+    response = HttpResponse(buffer.read(), content_type='application/zip')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response

@@ -78,14 +78,10 @@ def weld_detail(request, pk):
     previous_weld = Weld.objects.filter(pk__lt=pk).order_by('-pk').first()
     next_weld = Weld.objects.filter(pk__gt=pk).order_by('pk').first()
 
-    # Get all photos for this weld
-    photos = weld.photos.all()
-
     context = {
         'weld': weld,
         'previous_weld': previous_weld,
         'next_weld': next_weld,
-        'photos': photos,
     }
 
     return render(request, 'welds/weld_detail.html', context)

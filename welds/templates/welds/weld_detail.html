@@ -124,28 +124,5 @@
             <p>{{ weld.note|linebreaks }}</p>
         </div>
     </div>
-
-    <!-- Card 5: Photos -->
-    <div class="card mb-4">
-        <div class="card-header bg-primary text-white">
-            <h5 class="mb-0">Photos</h5>
-        </div>
-        <div class="card-body">
-            {% if weld.photos.all %}
-                <div class="row">
-                    {% for photo in weld.photos.all %}
-                        <div class="col-md-4 mb-3">
-                            <img src="{{ photo.image.url }}" alt="Weld photo" class="img-fluid rounded">
-                            {% if photo.caption %}
-                                <p class="mt-2 text-muted">{{ photo.caption }}</p>
-                            {% endif %}
-                        </div>
-                    {% endfor %}
-                </div>
-            {% else %}
-                <p class="text-muted">No photos available</p>
-            {% endif %}
-        </div>
-    </div>
 </div>
 {% endblock %}

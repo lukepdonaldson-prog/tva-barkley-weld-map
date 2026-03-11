@@ -30,6 +30,9 @@ def qa_dashboard(request):
     count_all = Weld.objects.count()
     count_filtered = welds.count()
 
+    pass_count = welds.filter(pass_fail__iexact='pass').count()
+    fail_count = welds.filter(pass_fail__iexact='fail').count()
+
     welds = welds.order_by('section', 'weld_id4')
 
     paginator = Paginator(welds, 50)
@@ -44,6 +47,8 @@ def qa_dashboard(request):
         'welds': welds_page,
         'count_all': count_all,
         'count_filtered': count_filtered,
+        'pass_count': pass_count,
+        'fail_count': fail_count,
         'sections': sections,
         'reports': reports,
         'statuses': statuses,

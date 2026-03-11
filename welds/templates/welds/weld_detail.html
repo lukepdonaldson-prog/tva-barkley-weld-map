@@ -1,127 +1,144 @@
 {% extends 'welds/base.html' %}
 {% load static %}
 
-{% block title %}Weld {{ weld.weld_id4 }} - Detail{% endblock %}
+{% block title %}Weld {{ weld.weld_id4 }} — Detail{% endblock %}
+
+{% block extra_css %}
+<style>
+    .detail-header {
+        border-left: 4px solid var(--color-accent);
+        padding-left: 1rem;
+    }
+    .detail-card .card-header {
+        background: var(--color-primary);
+        color: #ffffff;
+        font-weight: 600;
+        font-size: 0.9rem;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        padding: 0.7rem 1.25rem;
+    }
+    .detail-field {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 0.6rem;
+        font-size: 0.92rem;
+    }
+    .detail-field strong {
+        min-width: 160px;
+        color: var(--color-text-muted);
+        font-weight: 600;
+        font-size: 0.82rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        padding-top: 0.05rem;
+        flex-shrink: 0;
+    }
+    .badge-pass-lg, .badge-fail-lg {
+        display: inline-block;
+        font-size: 1.05rem;
+        font-weight: 700;
+        padding: 0.45em 1.1em;
+        border-radius: 0.4rem;
+        letter-spacing: 0.03em;
+    }
+    .badge-pass-lg { background: var(--color-success); color: #fff; }
+    .badge-fail-lg { background: var(--color-danger); color: #fff; }
+    .nav-btn-group { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end; }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="container-fluid mt-4">
-    <!-- Header -->
-    <div class="row mb-4">
-        <div class="col-md-8">
-            <h1>{{ weld.section }} - Weld {{ weld.weld_id4 }}</h1>
-        </div>
-        <div class="col-md-4 text-end">
-            {% if previous_weld %}
-                <a href="{% url 'weld_detail' previous_weld.id %}" class="btn btn-outline-primary">← Previous</a>
-            {% else %}
-                <button class="btn btn-outline-primary" disabled>← Previous</button>
-            {% endif %}
-            
-            {% if next_weld %}
-                <a href="{% url 'weld_detail' next_weld.id %}" class="btn btn-outline-primary">Next →</a>
-            {% else %}
-                <button class="btn btn-outline-primary" disabled>Next →</button>
-            {% endif %}
-            
-            <a href="{% url 'weld_list' %}" class="btn btn-secondary">Back to List</a>
-        </div>
+<!-- Header row -->
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
+    <div class="detail-header">
+        <h1 class="h3 mb-0 fw-bold" style="color: var(--color-primary);">{{ weld.section }} — Weld {{ weld.weld_id4 }}</h1>
+        <div class="text-muted mt-1" style="font-size:0.85rem;">Report {{ weld.report }} &bull; {{ weld.side }} side</div>
     </div>
+    <div class="nav-btn-group">
+        {% if previous_weld %}
+            <a href="{% url 'weld_detail' previous_weld.id %}" class="btn btn-outline-primary btn-sm">← Previous</a>
+        {% else %}
+            <button class="btn btn-outline-secondary btn-sm" disabled>← Previous</button>
+        {% endif %}
+        {% if next_weld %}
+            <a href="{% url 'weld_detail' next_weld.id %}" class="btn btn-outline-primary btn-sm">Next →</a>
+        {% else %}
+            <button class="btn btn-outline-secondary btn-sm" disabled>Next →</button>
+        {% endif %}
+        <a href="{% url 'weld_list' %}" class="btn btn-secondary btn-sm">↩ Back to List</a>
+    </div>
+</div>
 
+<!-- Pass/Fail banner -->
+<div class="mb-4">
+    {% if weld.pass_fail == 'Pass' %}
+        <span class="badge-pass-lg">✓ PASS</span>
+    {% elif weld.pass_fail == 'Fail' %}
+        <span class="badge-fail-lg">✗ FAIL</span>
+    {% else %}
+        <span class="badge bg-secondary fs-6">{{ weld.pass_fail }}</span>
+    {% endif %}
+</div>
+
+<div class="row g-4">
     <!-- Card 1: Location Info -->
-    <div class="card mb-4">
-        <div class="card-header bg-primary text-white">
-            <h5 class="mb-0">Location Information</h5>
-        </div>
-        <div class="card-body">
-            <div class="row">
-                <div class="col-md-6">
-                    <p><strong>Report:</strong> {{ weld.report }}</p>
-                    <p><strong>Side:</strong> {{ weld.side }}</p>
-                    <p><strong>Section:</strong> {{ weld.section }}</p>
-                    <p><strong>Weld ID:</strong> {{ weld.weld_id }}</p>
-                </div>
-                <div class="col-md-6">
-                    <p><strong>Weld ID2:</strong> {{ weld.weld_id2 }}</p>
-                    <p><strong>Weld ID3:</strong> {{ weld.weld_id3 }}</p>
-                    <p><strong>Weld ID4:</strong> {{ weld.weld_id4 }}</p>
-                </div>
+    <div class="col-12 col-md-6">
+        <div class="card detail-card h-100">
+            <div class="card-header">📍 Location Information</div>
+            <div class="card-body">
+                <div class="detail-field"><strong>Report</strong> <span>{{ weld.report }}</span></div>
+                <div class="detail-field"><strong>Side</strong> <span>{{ weld.side }}</span></div>
+                <div class="detail-field"><strong>Section</strong> <span>{{ weld.section }}</span></div>
+                <div class="detail-field"><strong>Weld ID</strong> <span>{{ weld.weld_id }}</span></div>
+                <div class="detail-field"><strong>Weld ID2</strong> <span>{{ weld.weld_id2 }}</span></div>
+                <div class="detail-field"><strong>Weld ID3</strong> <span>{{ weld.weld_id3 }}</span></div>
+                <div class="detail-field"><strong>Weld ID4</strong> <span>{{ weld.weld_id4 }}</span></div>
             </div>
         </div>
     </div>
 
     <!-- Card 2: Inspection Details -->
-    <div class="card mb-4">
-        <div class="card-header bg-primary text-white">
-            <h5 class="mb-0">Inspection Details</h5>
-        </div>
-        <div class="card-body">
-            <div class="row">
-                <div class="col-md-6">
-                    <p><strong>Weld Type:</strong> {{ weld.weld_type }}</p>
-                    <p><strong>Weld Size:</strong> {{ weld.weld_size }}</p>
-                    <p><strong>WPS #:</strong> {{ weld.wps_number }}</p>
-                </div>
-                <div class="col-md-6">
-                    <p><strong>Table 6.1 Criteria 1:</strong> {{ weld.table_61_criteria_1 }}</p>
-                    <p><strong>Table 6.1 Criteria 2:</strong> {{ weld.table_61_criteria_2 }}</p>
-                    <p><strong>Table 6.1 Criteria 3:</strong> {{ weld.table_61_criteria_3 }}</p>
-                </div>
-            </div>
-            <div class="row mt-3">
-                <div class="col-md-6">
-                    <p><strong>Inspection UTSW:</strong> {{ weld.inspection_utsw }}</p>
-                    <p><strong>Inspection MT:</strong> {{ weld.inspection_mt }}</p>
-                </div>
-                <div class="col-md-6">
-                    <p><strong>Inspector:</strong> {{ weld.inspector }}</p>
-                    <p><strong>Date:</strong> {{ weld.inspection_date|date:"M d, Y" }}</p>
-                </div>
+    <div class="col-12 col-md-6">
+        <div class="card detail-card h-100">
+            <div class="card-header">🔬 Inspection Details</div>
+            <div class="card-body">
+                <div class="detail-field"><strong>Weld Type</strong> <span>{{ weld.weld_type }}</span></div>
+                <div class="detail-field"><strong>Weld Size</strong> <span>{{ weld.weld_size }}</span></div>
+                <div class="detail-field"><strong>WPS #</strong> <span>{{ weld.wps_number }}</span></div>
+                <div class="detail-field"><strong>Table 6.1 Criteria 1</strong> <span>{{ weld.table_61_criteria_1 }}</span></div>
+                <div class="detail-field"><strong>Table 6.1 Criteria 2</strong> <span>{{ weld.table_61_criteria_2 }}</span></div>
+                <div class="detail-field"><strong>Table 6.1 Criteria 3</strong> <span>{{ weld.table_61_criteria_3 }}</span></div>
+                <div class="detail-field"><strong>Inspection UTSW</strong> <span>{{ weld.inspection_utsw }}</span></div>
+                <div class="detail-field"><strong>Inspection MT</strong> <span>{{ weld.inspection_mt }}</span></div>
+                <div class="detail-field"><strong>Inspector</strong> <span>{{ weld.inspector }}</span></div>
+                <div class="detail-field"><strong>Date</strong> <span>{{ weld.inspection_date|date:"M d, Y" }}</span></div>
             </div>
         </div>
     </div>
 
     <!-- Card 3: Results & Repair -->
-    <div class="card mb-4">
-        <div class="card-header bg-primary text-white">
-            <h5 class="mb-0">Results & Repair</h5>
-        </div>
-        <div class="card-body">
-            <div class="row mb-3">
-                <div class="col-md-6">
-                    <p>
-                        <strong>Pass/Fail:</strong> 
-                        {% if weld.pass_fail == 'Pass' %}
-                            <span class="badge bg-success">Pass</span>
-                        {% elif weld.pass_fail == 'Fail' %}
-                            <span class="badge bg-danger">Fail</span>
-                        {% else %}
-                            <span class="badge bg-secondary">{{ weld.pass_fail }}</span>
-                        {% endif %}
-                    </p>
-                </div>
-            </div>
-            <div class="row">
-                <div class="col-md-6">
-                    <p><strong>Estimated Repair Length:</strong> {{ weld.estimated_repair_length }}</p>
-                    <p><strong>Total Weld Length:</strong> {{ weld.total_weld_length }}</p>
-                    <p><strong>Corrective Action Taken:</strong> {{ weld.corrective_action_taken }}</p>
-                </div>
-                <div class="col-md-6">
-                    <p><strong>Repair Welder:</strong> {{ weld.repair_welder }}</p>
-                    <p><strong>Repair Inspection Date:</strong> {{ weld.repair_inspection_date|date:"M d, Y" }}</p>
-                    <p><strong>Weld Process:</strong> {{ weld.weld_process }}</p>
-                </div>
+    <div class="col-12 col-md-6">
+        <div class="card detail-card h-100">
+            <div class="card-header">🛠 Results &amp; Repair</div>
+            <div class="card-body">
+                <div class="detail-field"><strong>Est. Repair Length</strong> <span>{{ weld.estimated_repair_length }}</span></div>
+                <div class="detail-field"><strong>Total Weld Length</strong> <span>{{ weld.total_weld_length }}</span></div>
+                <div class="detail-field"><strong>Corrective Action</strong> <span>{{ weld.corrective_action_taken }}</span></div>
+                <div class="detail-field"><strong>Repair Welder</strong> <span>{{ weld.repair_welder }}</span></div>
+                <div class="detail-field"><strong>Repair Insp. Date</strong> <span>{{ weld.repair_inspection_date|date:"M d, Y" }}</span></div>
+                <div class="detail-field"><strong>Weld Process</strong> <span>{{ weld.weld_process }}</span></div>
             </div>
         </div>
     </div>
 
     <!-- Card 4: Notes -->
-    <div class="card mb-4">
-        <div class="card-header bg-primary text-white">
-            <h5 class="mb-0">Notes</h5>
-        </div>
-        <div class="card-body">
-            <p>{{ weld.note|linebreaks }}</p>
+    <div class="col-12 col-md-6">
+        <div class="card detail-card h-100">
+            <div class="card-header">📝 Notes</div>
+            <div class="card-body">
+                <div style="font-size:0.92rem; line-height:1.7;">{{ weld.note|linebreaks }}</div>
+            </div>
         </div>
     </div>
 </div>

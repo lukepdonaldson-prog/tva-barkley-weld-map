@@ -1,107 +1,284 @@
 {% extends 'welds/base.html' %}
 
-{% block title %}Weld Photo Gallery{% endblock %}
+{% block title %}Weld Photo Gallery — TVA Barkley{% endblock %}
 
 {% block extra_css %}
 <style>
-    .gallery-header {display:flex; justify-content:space-between; align-items:center; margin-bottom: 1em;}
-    .gallery-grid {display: flex; flex-wrap: wrap; gap: 20px;}
-    .photo-card {background:white; padding:10px; border-radius:8px; box-shadow:0 2px 8px #bbb8; width: 230px; text-align: center;}
-    .photo-card img {max-width: 200px; max-height: 170px; border-radius: 6px; margin-bottom: 6px;}
-    .filters {display:flex; flex-wrap:wrap; gap:12px; margin-bottom:20px;}
-    .statblock {color:#033; margin-bottom:1em;}
-    .pagination {margin-top:2em;}
-    .pagination a, .pagination span {margin: 0 3px; padding:4px 10px; text-decoration:none; border-radius:4px; font-size:18px;}
-    .pagination .current {background:#ccc; font-weight:bold;}
-    .copy-btn {border:none; background: #2196F3; color:#fff; cursor:pointer; border-radius:3px; margin-left: 3px;}
-    .download-btn {border:none; background: #4CAF50; color:white; border-radius:3px; cursor:pointer; margin-top:2px;}
-    .large-modal {display:none; position:fixed; top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);align-items:center;justify-content:center;z-index:1000;}
-    .large-modal img {max-height:90vh;max-width:90vw;}
+    .page-heading {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--color-primary);
+        margin-bottom: 1.25rem;
+    }
+    /* Photo grid */
+    .photo-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.25rem;
+    }
+    @media (max-width: 991px) {
+        .photo-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 575px) {
+        .photo-grid { grid-template-columns: 1fr; }
+    }
+
+    /* Photo card */
+    .photo-card {
+        background: var(--color-card-bg);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow-sm);
+        overflow: hidden;
+        transition: box-shadow 0.2s, transform 0.2s;
+        display: flex;
+        flex-direction: column;
+    }
+    .photo-card:hover {
+        box-shadow: var(--shadow-lg);
+        transform: translateY(-2px);
+    }
+    .photo-card-img-wrap {
+        overflow: hidden;
+        height: 180px;
+        background: #e9ecef;
+        cursor: pointer;
+    }
+    .photo-card-img-wrap img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.3s ease;
+        display: block;
+    }
+    .photo-card:hover .photo-card-img-wrap img {
+        transform: scale(1.06);
+    }
+    .photo-card-body {
+        padding: 0.75rem 0.9rem;
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 0.2rem;
+    }
+    .photo-meta {
+        font-size: 0.8rem;
+        color: var(--color-text-muted);
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+    }
+    .photo-meta strong {
+        color: var(--color-primary);
+        font-weight: 600;
+    }
+    .photo-desc {
+        font-size: 0.82rem;
+        color: var(--color-text);
+        margin-top: 0.15rem;
+        flex-grow: 1;
+        line-height: 1.4;
+    }
+    .photo-actions {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 0.6rem;
+    }
+    .copy-btn {
+        border: none;
+        background: transparent;
+        color: var(--color-accent);
+        cursor: pointer;
+        font-size: 0.78rem;
+        padding: 0;
+        line-height: 1;
+    }
+    .download-btn {
+        border: none;
+        background: var(--color-success);
+        color: white;
+        border-radius: 0.3rem;
+        cursor: pointer;
+        font-size: 0.78rem;
+        padding: 0.25rem 0.65rem;
+        font-weight: 600;
+        transition: background 0.15s;
+    }
+    .download-btn:hover {
+        background: #1a7a32;
+    }
+
+    /* Modal */
+    .photo-modal {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.92);
+        align-items: center;
+        justify-content: center;
+        z-index: 1050;
+        padding: 1rem;
+    }
+    .photo-modal.active {
+        display: flex;
+    }
+    .photo-modal img {
+        max-height: 88vh;
+        max-width: 88vw;
+        border-radius: 0.5rem;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+    }
+    .modal-close {
+        position: absolute;
+        top: 1.25rem;
+        right: 1.5rem;
+        background: none;
+        border: none;
+        color: #ffffff;
+        font-size: 2rem;
+        line-height: 1;
+        cursor: pointer;
+        opacity: 0.75;
+        transition: opacity 0.15s;
+        z-index: 1051;
+    }
+    .modal-close:hover { opacity: 1; }
 </style>
 {% endblock %}
 
 {% block content %}
-    <div class="gallery-header">
-        <h2>Weld Photo Gallery</h2>
-        <div class="statblock">
-            <strong>Total photos:</strong> {{ count_all }}<br>
-            <span>
-                <strong>Filtered:</strong> {{ count_filtered }}
-            </span>
+<h1 class="page-heading">📷 Weld Photo Gallery</h1>
+
+<!-- Stats -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="stat-card stat-primary">
+            <span class="stat-icon">🖼️</span>
+            <div class="stat-value">{{ count_all }}</div>
+            <div class="stat-label">Total Photos</div>
         </div>
     </div>
-
-    <form method="get" class="filters">
-        <select name="section">
-            <option value="">Section (all)</option>
-            {% for s in sections %}
-            <option value="{{ s }}" {% if selected_section == s %}selected{% endif %}>{{ s }}</option>
-            {% endfor %}
-        </select>
-        <select name="report_number">
-            <option value="">Report # (all)</option>
-            {% for r in reports %}
-            <option value="{{ r }}" {% if selected_report == r %}selected{% endif %}>{{ r }}</option>
-            {% endfor %}
-        </select>
-        <select name="subfolder">
-            <option value="">Subfolder (all)</option>
-            {% for sf in subfolders %}
-            <option value="{{ sf }}" {% if selected_subfolder == sf %}selected{% endif %}>{{ sf }}</option>
-            {% endfor %}
-        </select>
-        <input type="text" name="search" placeholder="Description or filename" value="{{ search }}">
-        <button type="submit">Filter</button>
-    </form>
-
-    <div class="gallery-grid">
-        {% for photo in page_obj %}
-        <div class="photo-card">
-            <div>
-                <img src="{{ photo.photo.url }}" alt="{{ photo.description }}" onclick="showModal(this.src)">
-            </div>
-            <div style="font-size:12.5px;">
-                <b>{{ photo.section }}</b> | Report: {{ photo.report_number }} <button class="copy-btn" onclick="copyToClipboard('{{ photo.section }}')">📋</button>
-            </div>
-            <div style="font-size:12px;"><b>Subfolder:</b> {{ photo.subfolder }}</div>
-            <div style="font-size:12px;" title="{{ photo.original_filename }}">
-                <b>Desc:</b> {{ photo.description|default:photo.original_filename|truncatechars:65 }}
-            </div>
-            <form method="get" action="{{ photo.photo.url }}">
-                <button class="download-btn" type="submit">Download</button>
-            </form>
+    <div class="col-6 col-md-3">
+        <div class="stat-card stat-info">
+            <span class="stat-icon">🔍</span>
+            <div class="stat-value">{{ count_filtered }}</div>
+            <div class="stat-label">Filtered</div>
         </div>
-        {% endfor %}
     </div>
+</div>
 
-    <div class="pagination">
+<!-- Filters -->
+<div class="card mb-4">
+    <div class="card-body py-3">
+        <form method="get" class="filter-row">
+            <div class="row g-2 align-items-end">
+                <div class="col-6 col-md-3">
+                    <select name="section" class="form-select form-select-sm" onchange="this.form.submit()">
+                        <option value="">Section (all)</option>
+                        {% for s in sections %}
+                        <option value="{{ s }}" {% if selected_section == s %}selected{% endif %}>{{ s }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <select name="report_number" class="form-select form-select-sm" onchange="this.form.submit()">
+                        <option value="">Report # (all)</option>
+                        {% for r in reports %}
+                        <option value="{{ r }}" {% if selected_report == r %}selected{% endif %}>{{ r }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-6 col-md-3">
+                    <select name="subfolder" class="form-select form-select-sm" onchange="this.form.submit()">
+                        <option value="">Subfolder (all)</option>
+                        {% for sf in subfolders %}
+                        <option value="{{ sf }}" {% if selected_subfolder == sf %}selected{% endif %}>{{ sf }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-6 col-md-3">
+                    <input type="text" name="search" class="form-control form-control-sm" placeholder="Description or filename…" value="{{ search }}">
+                </div>
+                <div class="col-12 col-md-auto d-flex gap-2">
+                    <button type="submit" class="btn btn-primary btn-sm px-3">Filter</button>
+                    <a href="{% url 'photo_gallery' %}" class="btn btn-outline-secondary btn-sm px-3">Clear</a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Photo Grid -->
+<div class="photo-grid">
+    {% for photo in page_obj %}
+    <div class="photo-card">
+        <div class="photo-card-img-wrap" role="button" tabindex="0" aria-label="View full size photo" onclick="showModal('{{ photo.photo.url }}')" onkeydown="if(event.key==='Enter'||event.key===' ')showModal('{{ photo.photo.url }}')">
+            <img src="{{ photo.photo.url }}" alt="{{ photo.description }}" loading="lazy">
+        </div>
+        <div class="photo-card-body">
+            <div class="photo-meta">
+                <strong>{{ photo.section }}</strong>
+                <span>&bull;</span>
+                <span>Report {{ photo.report_number }}</span>
+                <button class="copy-btn" onclick="copyToClipboard('{{ photo.section }}')" title="Copy section">📋</button>
+            </div>
+            <div class="photo-meta">
+                <span>📁 {{ photo.subfolder }}</span>
+            </div>
+            <div class="photo-desc">{{ photo.description|default:photo.original_filename|truncatechars:70 }}</div>
+            <div class="photo-actions">
+                <a href="{{ photo.photo.url }}" download class="download-btn">⬇ Download</a>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div style="grid-column: 1/-1;" class="text-center text-muted py-5">No photos found matching your filters.</div>
+    {% endfor %}
+</div>
+
+<!-- Pagination -->
+<nav class="mt-4">
+    <ul class="pagination justify-content-center flex-wrap">
         {% if page_obj.has_previous %}
-            <a href="?{% if selected_section %}section={{selected_section}}&{% endif %}{% if selected_report %}report_number={{selected_report}}&{% endif %}{% if selected_subfolder %}subfolder={{selected_subfolder}}&{% endif %}{% if search %}search={{search}}&{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>
+            <li class="page-item">
+                <a class="page-link" href="?{% if selected_section %}section={{ selected_section }}&{% endif %}{% if selected_report %}report_number={{ selected_report }}&{% endif %}{% if selected_subfolder %}subfolder={{ selected_subfolder }}&{% endif %}{% if search %}search={{ search }}&{% endif %}page={{ page_obj.previous_page_number }}">← Prev</a>
+            </li>
         {% endif %}
-        <span class="current">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+        <li class="page-item disabled">
+            <span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+        </li>
         {% if page_obj.has_next %}
-            <a href="?{% if selected_section %}section={{selected_section}}&{% endif %}{% if selected_report %}report_number={{selected_report}}&{% endif %}{% if selected_subfolder %}subfolder={{selected_subfolder}}&{% endif %}{% if search %}search={{search}}&{% endif %}page={{ page_obj.next_page_number }}">Next</a>
+            <li class="page-item">
+                <a class="page-link" href="?{% if selected_section %}section={{ selected_section }}&{% endif %}{% if selected_report %}report_number={{ selected_report }}&{% endif %}{% if selected_subfolder %}subfolder={{ selected_subfolder }}&{% endif %}{% if search %}search={{ search }}&{% endif %}page={{ page_obj.next_page_number }}">Next →</a>
+            </li>
         {% endif %}
-    </div>
+    </ul>
+</nav>
 
-    <div id="modal" class="large-modal" onclick="closeModal()">
-        <img id="modal-img" alt="Large photo" />
-    </div>
+<!-- Full-screen modal -->
+<div id="photoModal" class="photo-modal" role="dialog" aria-modal="true" aria-label="Full size photo viewer" onclick="closeModal()">
+    <button class="modal-close" onclick="closeModal()" aria-label="Close">&times;</button>
+    <img id="modal-img" alt="Full size photo" onclick="event.stopPropagation()">
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
     function showModal(imgSrc) {
-        var modal = document.getElementById('modal');
-        var modalImg = document.getElementById('modal-img');
-        modalImg.src = imgSrc;
-        modal.style.display = 'flex';
+        document.getElementById('modal-img').src = imgSrc;
+        document.getElementById('photoModal').classList.add('active');
+        document.body.style.overflow = 'hidden';
     }
     function closeModal() {
-        document.getElementById('modal').style.display = 'none';
+        document.getElementById('photoModal').classList.remove('active');
+        document.body.style.overflow = '';
     }
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeModal();
+    });
     function copyToClipboard(text) {
-        navigator.clipboard.writeText(text);
+        navigator.clipboard.writeText(text).catch(() => {
+            alert('Section copied: ' + text);
+        });
     }
 </script>
 {% endblock %}

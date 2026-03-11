@@ -1,86 +1,159 @@
 {% extends 'welds/base.html' %}
 
-{% block title %}QA Weld Dashboard{% endblock %}
+{% block title %}QA Weld Dashboard — TVA Barkley{% endblock %}
 
 {% block extra_css %}
 <style>
-    .dashboard-header {display:flex; justify-content:space-between; align-items:center;}
-    .filters {display:flex; flex-wrap:wrap; gap:12px; margin-bottom:18px;}
-    .statblock {margin-bottom:1em;}
-    table { width: 100%; border-collapse:collapse; margin-bottom:2em;}
-    th, td { border:1px solid #ccc; padding:6px 8px; }
-    th { background:#e7f1fc; }
-    tr:hover { background: #f4f8fb; }
-    .pagination {margin-top:1.8em;}
-    .pagination a, .pagination span {margin: 0 3px; padding:4px 10px; text-decoration:none; border-radius:4px; font-size:18px;}
-    .pagination .current {background:#ccc; font-weight:bold;}
+    .page-heading {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--color-primary);
+        margin-bottom: 1.25rem;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-    <div class="dashboard-header">
-        <h2>QA Weld Dashboard</h2>
-        <div class="statblock">
-            <strong>Total welds:</strong> {{ count_all }}
-            <strong>&nbsp;Filtered:</strong> {{ count_filtered }}
+<h1 class="page-heading">🔒 QA Weld Dashboard</h1>
+
+<!-- Stats -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="stat-card stat-primary">
+            <span class="stat-icon">🔩</span>
+            <div class="stat-value">{{ count_all }}</div>
+            <div class="stat-label">Total Welds</div>
         </div>
     </div>
-
-    <form method="get" class="filters">
-        <select name="section">
-            <option value="">Section (all)</option>
-            {% for s in sections %}
-            <option value="{{ s }}" {% if selected_section == s %}selected{% endif %}>{{ s }}</option>
-            {% endfor %}
-        </select>
-        <select name="report">
-            <option value="">Report# (all)</option>
-            {% for r in reports %}
-            <option value="{{ r }}" {% if selected_report == r|stringformat:"s" %}selected{% endif %}>{{ r }}</option>
-            {% endfor %}
-        </select>
-        <select name="pass_fail">
-            <option value="">Status (all)</option>
-            {% for st in statuses %}
-            <option value="{{ st }}" {% if selected_status == st %}selected{% endif %}>{{ st }}</option>
-            {% endfor %}
-        </select>
-        <input type="text" name="search" placeholder="Weld ID, inspector, note..." value="{{ search }}">
-        <button type="submit">Filter</button>
-    </form>
-
-    <table>
-      <tr>
-        <th>Section</th>
-        <th>Weld ID</th>
-        <th>Report</th>
-        <th>Date</th>
-        <th>Inspector</th>
-        <th>Status</th>
-        <th>Weld Type</th>
-        <th>Comments</th>
-      </tr>
-      {% for weld in welds %}
-      <tr>
-        <td>{{ weld.section }}</td>
-        <td>{{ weld.weld_id4 }}</td>
-        <td>{{ weld.report }}</td>
-        <td>{{ weld.date }}</td>
-        <td>{{ weld.inspector }}</td>
-        <td>{{ weld.pass_fail }}</td>
-        <td>{{ weld.weld_type }}</td>
-        <td style="font-size:11px;max-width:180px;">{{ weld.note|truncatechars:60 }}</td>
-      </tr>
-      {% endfor %}
-    </table>
-
-    <div class="pagination">
-        {% if welds.has_previous %}
-            <a href="?page={{ welds.previous_page_number }}">&laquo; Previous</a>
-        {% endif %}
-        <span class="current">Page {{ welds.number }} of {{ welds.paginator.num_pages }}</span>
-        {% if welds.has_next %}
-            <a href="?page={{ welds.next_page_number }}">Next &raquo;</a>
-        {% endif %}
+    <div class="col-6 col-md-3">
+        <div class="stat-card stat-info">
+            <span class="stat-icon">🔍</span>
+            <div class="stat-value">{{ count_filtered }}</div>
+            <div class="stat-label">Filtered</div>
+        </div>
     </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card stat-success">
+            <span class="stat-icon">✅</span>
+            <div class="stat-value">{{ pass_count }}</div>
+            <div class="stat-label">Pass</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card stat-danger">
+            <span class="stat-icon">❌</span>
+            <div class="stat-value">{{ fail_count }}</div>
+            <div class="stat-label">Fail</div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card mb-4">
+    <div class="card-body py-3">
+        <form method="get" class="filter-row">
+            <div class="row g-2 align-items-end">
+                <div class="col-6 col-md-3">
+                    <select name="section" class="form-select form-select-sm" onchange="this.form.submit()">
+                        <option value="">Section (all)</option>
+                        {% for s in sections %}
+                        <option value="{{ s }}" {% if selected_section == s %}selected{% endif %}>{{ s }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <select name="report" class="form-select form-select-sm" onchange="this.form.submit()">
+                        <option value="">Report # (all)</option>
+                        {% for r in reports %}
+                        <option value="{{ r }}" {% if selected_report == r|stringformat:"s" %}selected{% endif %}>{{ r }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <select name="pass_fail" class="form-select form-select-sm" onchange="this.form.submit()">
+                        <option value="">Status (all)</option>
+                        {% for st in statuses %}
+                        <option value="{{ st }}" {% if selected_status == st %}selected{% endif %}>{{ st }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-6 col-md-3">
+                    <input type="text" name="search" class="form-control form-control-sm" placeholder="Weld ID, inspector, note…" value="{{ search }}">
+                </div>
+                <div class="col-12 col-md-auto d-flex gap-2">
+                    <button type="submit" class="btn btn-primary btn-sm px-3">Filter</button>
+                    <a href="{% url 'qa_dashboard' %}" class="btn btn-outline-secondary btn-sm px-3">Clear</a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Table -->
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sticky-header mb-0">
+                <thead>
+                    <tr>
+                        <th>Section</th>
+                        <th>Weld ID</th>
+                        <th>Report</th>
+                        <th>Date</th>
+                        <th>Inspector</th>
+                        <th>Status</th>
+                        <th>Weld Type</th>
+                        <th>Comments</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for weld in welds %}
+                    <tr class="{% if weld.pass_fail == 'Fail' %}row-fail{% endif %}">
+                        <td>{{ weld.section }}</td>
+                        <td>{{ weld.weld_id4 }}</td>
+                        <td>{{ weld.report }}</td>
+                        <td>{{ weld.date }}</td>
+                        <td>{{ weld.inspector }}</td>
+                        <td>
+                            {% if weld.pass_fail == "Pass" %}
+                                <span class="badge-pass">✓ Pass</span>
+                            {% elif weld.pass_fail == "Fail" %}
+                                <span class="badge-fail">✗ Fail</span>
+                            {% else %}
+                                <span class="text-muted">{{ weld.pass_fail }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ weld.weld_type }}</td>
+                        <td style="max-width:200px; font-size:0.82rem;">{{ weld.note|truncatechars:60 }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center text-muted py-4">No welds found matching your filters.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Pagination -->
+<nav class="mt-4">
+    <ul class="pagination justify-content-center flex-wrap">
+        {% if welds.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ welds.previous_page_number }}{% if selected_section %}&section={{ selected_section }}{% endif %}{% if selected_report %}&report={{ selected_report }}{% endif %}{% if selected_status %}&pass_fail={{ selected_status }}{% endif %}{% if search %}&search={{ search }}{% endif %}">← Prev</a>
+            </li>
+        {% endif %}
+        <li class="page-item disabled">
+            <span class="page-link">Page {{ welds.number }} of {{ welds.paginator.num_pages }}</span>
+        </li>
+        {% if welds.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ welds.next_page_number }}{% if selected_section %}&section={{ selected_section }}{% endif %}{% if selected_report %}&report={{ selected_report }}{% endif %}{% if selected_status %}&pass_fail={{ selected_status }}{% endif %}{% if search %}&search={{ search }}{% endif %}">Next →</a>
+            </li>
+        {% endif %}
+    </ul>
+</nav>
+
 {% endblock %}

@@ -1,140 +1,159 @@
 {% extends 'welds/base.html' %}
 
-{% block content %}
-<h2 class="mb-4">Weld Inspection Records</h2>
+{% block title %}Weld List — TVA Barkley{% endblock %}
 
-<!-- Search and Filters -->
-<form method="get" class="mb-4">
-    <div class="row g-3 mb-3">
-        <div class="col-md-4">
-            <input type="text" name="search" class="form-control" placeholder="Search section, weld ID, inspector, notes..." value="{{ request.GET.search }}">
-        </div>
-        <div class="col-md-2">
-            <select name="side" class="form-select" onchange="this.form.submit()">
-                <option value="">All Sides</option>
-                {% for s in sides %}
-                    <option value="{{ s }}" {% if request.GET.side == s %}selected{% endif %}>{{ s }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="col-md-2">
-            <select name="weld_type" class="form-select" onchange="this.form.submit()">
-                <option value="">All Weld Types</option>
-                {% for wt in weld_types %}
-                    <option value="{{ wt }}" {% if request.GET.weld_type == wt %}selected{% endif %}>{{ wt }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="col-md-2">
-            <select name="pass_fail" class="form-select" onchange="this.form.submit()">
-                <option value="">All Status</option>
-                {% for pf in pass_fail_choices %}
-                    <option value="{{ pf }}" {% if request.GET.pass_fail == pf %}selected{% endif %}>{{ pf }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="col-md-2">
-            <select name="report" class="form-select" onchange="this.form.submit()">
-                <option value="">All Reports</option>
-                {% for r in reports %}
-                    <option value="{{ r }}" {% if request.GET.report == r|stringformat:"d" %}selected{% endif %}>Report {{ r }}</option>
-                {% endfor %}
-            </select>
-        </div>
+{% block extra_css %}
+<style>
+    .page-heading {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--color-primary);
+        margin-bottom: 1.25rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1 class="page-heading">🔩 Weld Inspection Records</h1>
+
+<!-- Filters -->
+<div class="card mb-4">
+    <div class="card-body py-3">
+        <form method="get" class="filter-row">
+            <div class="row g-2 align-items-end">
+                <div class="col-12 col-md-4 col-lg-3">
+                    <input type="text" name="search" class="form-control form-control-sm" placeholder="Search section, weld ID, inspector…" value="{{ request.GET.search }}">
+                </div>
+                <div class="col-6 col-md-2">
+                    <select name="side" class="form-select form-select-sm" onchange="this.form.submit()">
+                        <option value="">All Sides</option>
+                        {% for s in sides %}
+                            <option value="{{ s }}" {% if request.GET.side == s %}selected{% endif %}>{{ s }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <select name="weld_type" class="form-select form-select-sm" onchange="this.form.submit()">
+                        <option value="">All Weld Types</option>
+                        {% for wt in weld_types %}
+                            <option value="{{ wt }}" {% if request.GET.weld_type == wt %}selected{% endif %}>{{ wt }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <select name="pass_fail" class="form-select form-select-sm" onchange="this.form.submit()">
+                        <option value="">All Status</option>
+                        {% for pf in pass_fail_choices %}
+                            <option value="{{ pf }}" {% if request.GET.pass_fail == pf %}selected{% endif %}>{{ pf }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <select name="report" class="form-select form-select-sm" onchange="this.form.submit()">
+                        <option value="">All Reports</option>
+                        {% for r in reports %}
+                            <option value="{{ r }}" {% if request.GET.report == r|stringformat:"d" %}selected{% endif %}>Report {{ r }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12 col-md-auto d-flex gap-2">
+                    <button type="submit" class="btn btn-primary btn-sm px-3">Search</button>
+                    <a href="{% url 'weld_list' %}" class="btn btn-outline-secondary btn-sm px-3">Clear</a>
+                </div>
+            </div>
+        </form>
     </div>
-    <button type="submit" class="btn btn-primary">Search</button>
-    <a href="{% url 'weld_list' %}" class="btn btn-outline-secondary">Clear Filters</a>
-</form>
+</div>
 
 <!-- Summary Stats -->
-<div class="row mb-4">
-    <div class="col-md-3">
-        <div class="card bg-primary text-white">
-            <div class="card-body text-center">
-                <h5 class="card-title">Total Welds</h5>
-                <h3>{{ aggregates.total_count }}</h3>
-            </div>
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="stat-card stat-primary">
+            <span class="stat-icon">🔩</span>
+            <div class="stat-value">{{ aggregates.total_count }}</div>
+            <div class="stat-label">Total Welds</div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card bg-info text-white">
-            <div class="card-body text-center">
-                <h5 class="card-title">Total Weld Length</h5>
-                <h3>{{ aggregates.total_weld_length|floatformat:1|default:"0" }} in</h3>
-            </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card stat-info">
+            <span class="stat-icon">📏</span>
+            <div class="stat-value">{{ aggregates.total_weld_length|floatformat:0|default:"0" }}</div>
+            <div class="stat-label">Total Weld Length (in)</div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card bg-warning text-dark">
-            <div class="card-body text-center">
-                <h5 class="card-title">Est. Repair Length</h5>
-                <h3>{{ aggregates.total_repair_length|floatformat:1|default:"0" }} in</h3>
-            </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card stat-success">
+            <span class="stat-icon">✅</span>
+            <div class="stat-value">{{ aggregates.pass_count }}</div>
+            <div class="stat-label">Pass</div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card bg-dark text-white">
-            <div class="card-body text-center">
-                <h5 class="card-title">Pass / Fail</h5>
-                <h3><span class="badge bg-success">{{ aggregates.pass_count }}</span> / <span class="badge bg-danger">{{ aggregates.fail_count }}</span></h3>
-            </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card stat-danger">
+            <span class="stat-icon">❌</span>
+            <div class="stat-value">{{ aggregates.fail_count }}</div>
+            <div class="stat-label">Fail</div>
         </div>
     </div>
 </div>
 
 <!-- Weld Table -->
-<div class="table-responsive">
-    <table class="table table-striped table-hover">
-        <thead class="table-dark">
-            <tr>
-                <th>Section</th>
-                <th>Weld ID4</th>
-                <th>Side</th>
-                <th>Weld Type</th>
-                <th>Weld Size</th>
-                <th>Pass/Fail</th>
-                <th>Report</th>
-                <th>Date</th>
-                <th>Repair Welder</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for weld in welds %}
-            <tr>
-                <td><a href="{% url 'weld_detail' weld.pk %}">{{ weld.section }}</a></td>
-                <td>{{ weld.weld_id4 }}</td>
-                <td>{{ weld.side }}</td>
-                <td>{{ weld.weld_type }}</td>
-                <td>{{ weld.weld_size }}</td>
-                <td>
-                    {% if weld.pass_fail == "Pass" %}
-                        <span class="badge bg-success">Pass</span>
-                    {% elif weld.pass_fail == "Fail" %}
-                        <span class="badge bg-danger">Fail</span>
-                    {% else %}
-                        {{ weld.pass_fail }}
-                    {% endif %}
-                </td>
-                <td>{{ weld.report }}</td>
-                <td>{{ weld.date }}</td>
-                <td>{{ weld.repair_welder }}</td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="9" class="text-center">No welds found.</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sticky-header mb-0">
+                <thead>
+                    <tr>
+                        <th>Section</th>
+                        <th>Weld ID</th>
+                        <th>Side</th>
+                        <th>Weld Type</th>
+                        <th>Weld Size</th>
+                        <th>Status</th>
+                        <th>Report</th>
+                        <th>Date</th>
+                        <th>Repair Welder</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for weld in welds %}
+                    <tr class="{% if weld.pass_fail == 'Fail' %}row-fail{% endif %}">
+                        <td><a href="{% url 'weld_detail' weld.pk %}" class="section-link">{{ weld.section }}</a></td>
+                        <td>{{ weld.weld_id4 }}</td>
+                        <td>{{ weld.side }}</td>
+                        <td>{{ weld.weld_type }}</td>
+                        <td>{{ weld.weld_size }}</td>
+                        <td>
+                            {% if weld.pass_fail == "Pass" %}
+                                <span class="badge-pass">✓ Pass</span>
+                            {% elif weld.pass_fail == "Fail" %}
+                                <span class="badge-fail">✗ Fail</span>
+                            {% else %}
+                                <span class="text-muted">{{ weld.pass_fail }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ weld.report }}</td>
+                        <td>{{ weld.date }}</td>
+                        <td>{{ weld.repair_welder }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="text-center text-muted py-4">No welds found matching your filters.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
 
 <!-- Pagination -->
 {% if page_obj.has_other_pages %}
-<nav>
-    <ul class="pagination justify-content-center">
+<nav class="mt-4">
+    <ul class="pagination justify-content-center flex-wrap">
         {% if page_obj.has_previous %}
             <li class="page-item">
-                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Previous</a>
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">← Prev</a>
             </li>
         {% endif %}
 
@@ -150,7 +169,7 @@
 
         {% if page_obj.has_next %}
             <li class="page-item">
-                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Next</a>
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Next →</a>
             </li>
         {% endif %}
     </ul>

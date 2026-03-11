@@ -80,9 +80,11 @@
                 <div class="col-6 col-md-3">
                     <input type="text" name="search" class="form-control form-control-sm" placeholder="Weld ID, inspector, note…" value="{{ search }}">
                 </div>
-                <div class="col-12 col-md-auto d-flex gap-2">
+                <div class="col-12 col-md-auto d-flex gap-2 flex-wrap">
                     <button type="submit" class="btn btn-primary btn-sm px-3">Filter</button>
                     <a href="{% url 'qa_dashboard' %}" class="btn btn-outline-secondary btn-sm px-3">Clear</a>
+                    <a href="{% url 'export_qa_excel' %}?{{ request.GET.urlencode }}" class="btn btn-success btn-sm px-3">📊 Export Excel</a>
+                    <a href="{% url 'export_qa_pdf' %}?{{ request.GET.urlencode }}" class="btn btn-danger btn-sm px-3">📄 Export PDF</a>
                 </div>
             </div>
         </form>

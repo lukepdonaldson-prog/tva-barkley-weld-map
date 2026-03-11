@@ -1,0 +1,8 @@
+[phases.setup]
+nixPkgs = ["python311"]
+
+[phases.install]
+cmds = ["pip install -r requirements.txt"]
+
+[start]
+cmd = "python manage.py migrate && python manage.py collectstatic --noinput && gunicorn weldmap.wsgi --bind 0.0.0.0:$PORT"

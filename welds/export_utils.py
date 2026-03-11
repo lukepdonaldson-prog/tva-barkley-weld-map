@@ -9,7 +9,7 @@ from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils import get_column_letter
 
 from reportlab.lib import colors
-from reportlab.lib.pagesizes import landscape, A4
+from reportlab.lib.pagesizes import landscape, A3
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import cm
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
@@ -86,7 +86,7 @@ def generate_pdf_response(queryset, filename, title, filters_desc=""):
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
         buffer,
-        pagesize=landscape(A4),
+        pagesize=landscape(A3),
         leftMargin=1.5 * cm,
         rightMargin=1.5 * cm,
         topMargin=2 * cm,
@@ -109,6 +109,23 @@ def generate_pdf_response(queryset, filename, title, filters_desc=""):
         spaceAfter=4,
     )
 
+    cell_style = ParagraphStyle(
+        'CellStyle',
+        parent=styles['Normal'],
+        fontSize=7,
+        leading=8,
+        wordWrap='CJK',
+    )
+    header_cell_style = ParagraphStyle(
+        'HeaderCellStyle',
+        parent=styles['Normal'],
+        fontSize=8,
+        leading=9,
+        textColor=colors.white,
+        fontName='Helvetica-Bold',
+        alignment=1,
+    )
+
     story = []
     story.append(Paragraph(title, title_style))
     story.append(Paragraph(f"Generated on {date.today().strftime('%B %d, %Y')}", subtitle_style))
@@ -117,8 +134,8 @@ def generate_pdf_response(queryset, filename, title, filters_desc=""):
     story.append(Spacer(1, 0.4 * cm))
 
     # Table data
-    headers = [col_label for _, col_label in EXPORT_COLUMNS]
-    table_data = [headers]
+    header_paragraphs = [Paragraph(col_label, header_cell_style) for _, col_label in EXPORT_COLUMNS]
+    table_data = [header_paragraphs]
 
     pass_fill = colors.HexColor("#C6EFCE")
     fail_fill = colors.HexColor("#FFC7CE")
@@ -128,7 +145,7 @@ def generate_pdf_response(queryset, filename, title, filters_desc=""):
         row = []
         for field, _ in EXPORT_COLUMNS:
             value = getattr(weld, field, "") or ""
-            row.append(str(value))
+            row.append(Paragraph(str(value), cell_style))
         table_data.append(row)
         pf = (getattr(weld, "pass_fail", "") or "").lower()
         if pf == "pass":
@@ -151,7 +168,6 @@ def generate_pdf_response(queryset, filename, title, filters_desc=""):
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
         ("TOPPADDING", (0, 0), (-1, -1), 3),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
-        ("WORDWRAP", (0, 1), (-1, -1), True),
     ]
 
     # Color-code Pass/Fail column (index 5)

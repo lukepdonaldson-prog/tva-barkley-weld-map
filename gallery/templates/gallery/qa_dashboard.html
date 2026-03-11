@@ -11,32 +11,10 @@
         th, td { border:1px solid #ccc; padding:6px 8px; }
         th { background:#e7f1fc; }
         tr:hover { background: #f4f8fb; }
-        .mini-thumb {max-height: 40px; max-width:60px; border-radius:3px; margin: 2px;}
-        .photo-row {background:#f2f8ff;}
-        .expand-btn { cursor:pointer; border:none; background: none; color: #369; font-size:18px; }
         .pagination {margin-top:1.8em;}
         .pagination a, .pagination span {margin: 0 3px; padding:4px 10px; text-decoration:none; border-radius:4px; font-size:18px;}
         .pagination .current {background:#ccc; font-weight:bold;}
     </style>
-    <script>
-        function togglePhotos(id) {
-            var row = document.getElementById("photos-" + id);
-            if (row.style.display === "none" || row.style.display === "") {
-                row.style.display = "table-row";
-            } else {
-                row.style.display = "none";
-            }
-        }
-        function showModal(imgSrc) {
-            var modal = document.getElementById('modal');
-            var modalImg = document.getElementById('modal-img');
-            modalImg.src = imgSrc;
-            modal.style.display = 'flex';
-        }
-        function closeModal() {
-            document.getElementById('modal').style.display = 'none';
-        }
-    </script>
 </head>
 <body>
     <div class="dashboard-header">
@@ -67,52 +45,30 @@
             {% endfor %}
         </select>
         <input type="text" name="search" placeholder="Weld ID, inspector, note..." value="{{ search }}">
-        <label><input type="checkbox" name="has_photos" value="1" {% if has_photos == '1' %}checked{% endif %}> Has photos</label>
         <button type="submit">Filter</button>
     </form>
 
     <table>
       <tr>
-        <th></th>
         <th>Section</th>
         <th>Weld ID</th>
         <th>Report</th>
         <th>Date</th>
         <th>Inspector</th>
         <th>Status</th>
+        <th>Weld Type</th>
         <th>Comments</th>
-        <th>Photos</th>
       </tr>
       {% for weld in welds %}
       <tr>
-        <td>
-          <button class="expand-btn" type="button" onclick="togglePhotos('{{ weld.id }}')">+</button>
-        </td>
         <td>{{ weld.section }}</td>
         <td>{{ weld.weld_id4 }}</td>
         <td>{{ weld.report }}</td>
         <td>{{ weld.date }}</td>
         <td>{{ weld.inspector }}</td>
         <td>{{ weld.pass_fail }}</td>
+        <td>{{ weld.weld_type }}</td>
         <td style="font-size:11px;max-width:180px;">{{ weld.note|truncatechars:60 }}</td>
-        <td>
-            {% if weld.photos.all|length > 0 %}
-                {{ weld.photos.all|length }} 📷
-            {% else %}
-                -
-            {% endif %}
-        </td>
-      </tr>
-      <tr id="photos-{{ weld.id }}" class="photo-row" style="display:none;">
-        <td colspan="9">
-            {% if weld.photos.all|length > 0 %}
-                {% for photo in weld.photos.all %}
-                    <img src="{{ photo.photo.url }}" class="mini-thumb" onclick="showModal(this.src)">
-                {% endfor %}
-            {% else %}
-                <i>No photos linked.</i>
-            {% endif %}
-        </td>
       </tr>
       {% endfor %}
     </table>
@@ -125,10 +81,6 @@
         {% if welds.has_next %}
             <a href="?page={{ welds.next_page_number }}">Next &raquo;</a>
         {% endif %}
-    </div>
-
-    <div id="modal" class="large-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);align-items:center;justify-content:center;" onclick="closeModal()">
-        <img id="modal-img" alt="Large view" style="max-height:95vh;max-width:95vw;border-radius:9px;">
     </div>
 </body>
 </html>

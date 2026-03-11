@@ -5,7 +5,8 @@ from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('gallery/', include('gallery.urls')),   # <-- add this!
+    path('gallery/', include('gallery.urls')),
+    path('welds/', include('welds.urls')),
 ]
 
 if settings.DEBUG:

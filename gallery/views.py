@@ -21,6 +21,9 @@ def _apply_qa_filters(request):
     report = request.GET.get('report', '')
     pass_fail = request.GET.get('pass_fail', '')
     search = request.GET.get('search', '')
+    date_from = request.GET.get('date_from', '')
+    date_to = request.GET.get('date_to', '')
+    inspector = request.GET.get('inspector', '')
 
     if section:
         welds = welds.filter(section=section)
@@ -28,6 +31,12 @@ def _apply_qa_filters(request):
         welds = welds.filter(report=report)
     if pass_fail:
         welds = welds.filter(pass_fail=pass_fail)
+    if date_from:
+        welds = welds.filter(date__gte=date_from)
+    if date_to:
+        welds = welds.filter(date__lte=date_to)
+    if inspector:
+        welds = welds.filter(inspector=inspector)
     if search:
         welds = welds.filter(
             Q(weld_id4__icontains=search) |
@@ -41,7 +50,8 @@ def _build_qa_filters_desc(request):
     """Return a human-readable string describing active QA dashboard filters."""
     parts = []
     for key, label in [('section', 'Section'), ('report', 'Report'),
-                       ('pass_fail', 'Status'), ('search', 'Search')]:
+                       ('pass_fail', 'Status'), ('inspector', 'Inspector'),
+                       ('date_from', 'From'), ('date_to', 'To'), ('search', 'Search')]:
         val = request.GET.get(key)
         if val:
             parts.append(f"{label}: {val}")
@@ -56,6 +66,9 @@ def qa_dashboard(request):
     report = request.GET.get('report', '')
     pass_fail = request.GET.get('pass_fail', '')
     search = request.GET.get('search', '')
+    date_from = request.GET.get('date_from', '')
+    date_to = request.GET.get('date_to', '')
+    inspector = request.GET.get('inspector', '')
 
     count_all = Weld.objects.count()
     count_filtered = welds.count()
@@ -70,6 +83,7 @@ def qa_dashboard(request):
     sections = Weld.objects.values_list('section', flat=True).order_by('section').distinct()
     reports = Weld.objects.values_list('report', flat=True).order_by('report').distinct()
     statuses = Weld.objects.values_list('pass_fail', flat=True).order_by('pass_fail').distinct().exclude(pass_fail='')
+    inspectors = Weld.objects.values_list('inspector', flat=True).order_by('inspector').distinct().exclude(inspector='')
 
     return render(request, 'gallery/qa_dashboard.html', {
         'welds': welds_page,
@@ -80,10 +94,14 @@ def qa_dashboard(request):
         'sections': sections,
         'reports': reports,
         'statuses': statuses,
+        'inspectors': inspectors,
         'selected_section': section,
         'selected_report': report,
         'selected_status': pass_fail,
         'search': search,
+        'selected_inspector': inspector,
+        'date_from': date_from,
+        'date_to': date_to,
     })
 
 def _apply_photo_filters(request):
@@ -93,6 +111,8 @@ def _apply_photo_filters(request):
     report = request.GET.get('report_number', '')
     subfolder = request.GET.get('subfolder', '')
     search = request.GET.get('search', '')
+    date_from = request.GET.get('date_from', '')
+    date_to = request.GET.get('date_to', '')
 
     if section:
         photos = photos.filter(section__icontains=section)
@@ -100,6 +120,10 @@ def _apply_photo_filters(request):
         photos = photos.filter(report_number__icontains=report)
     if subfolder:
         photos = photos.filter(subfolder__icontains=subfolder)
+    if date_from:
+        photos = photos.filter(uploaded_at__date__gte=date_from)
+    if date_to:
+        photos = photos.filter(uploaded_at__date__lte=date_to)
     if search:
         photos = photos.filter(
             Q(description__icontains=search) |
@@ -115,6 +139,8 @@ def photo_gallery(request):
     report = request.GET.get('report_number', '')
     subfolder = request.GET.get('subfolder', '')
     search = request.GET.get('search', '')
+    date_from = request.GET.get('date_from', '')
+    date_to = request.GET.get('date_to', '')
 
     paginator = Paginator(photos, 50)
     page_number = request.GET.get('page')
@@ -135,6 +161,8 @@ def photo_gallery(request):
         'selected_report': report,
         'selected_subfolder': subfolder,
         'search': search,
+        'date_from': date_from,
+        'date_to': date_to,
     })
 
 

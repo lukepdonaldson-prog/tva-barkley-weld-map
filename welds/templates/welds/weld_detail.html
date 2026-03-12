@@ -136,6 +136,38 @@
     {% endif %}
 </div>
 
+<!-- Validation banner -->
+{% with missing=weld.get_missing_fields %}
+{% if weld.validation_cleared %}
+<div class="alert mb-4 d-flex align-items-start gap-2" style="background:#d1fae5; border:1px solid #6ee7b7; color:#065f46; border-radius:0.5rem;">
+    <span style="font-size:1.2rem; flex-shrink:0;">✅</span>
+    <div>
+        <strong>Validation cleared:</strong> {{ weld.validation_note }}
+        <div class="mt-2">
+            <button id="btn-unclear" class="btn btn-sm btn-outline-danger" style="font-size:0.8rem;">Un-clear (re-open warning)</button>
+        </div>
+    </div>
+</div>
+{% elif missing %}
+<div class="alert mb-4 d-flex align-items-start gap-2" style="background:#fff7ed; border:1px solid #fb923c; color:#9a3412; border-radius:0.5rem;" id="validation-warning-banner">
+    <span style="font-size:1.2rem; flex-shrink:0;">⚠️</span>
+    <div class="w-100">
+        <strong>Missing:</strong>
+        {% for f in missing %}<span class="badge me-1" style="background:#fb923c; color:#fff; font-weight:600;">{{ f }}</span>{% endfor %}
+        <div class="mt-2">
+            <button class="btn btn-sm btn-warning" id="btn-clear-warning" style="font-size:0.8rem; color:#fff;">Clear Warning with Note</button>
+        </div>
+        <!-- Clear warning form (initially hidden) -->
+        <div id="clear-warning-form" class="mt-2" style="display:none;">
+            <textarea id="clear-note-input" class="form-control form-control-sm mb-2" rows="2" placeholder="Explain why this missing data is acceptable…" style="font-size:0.88rem;"></textarea>
+            <button id="btn-submit-clear" class="btn btn-warning btn-sm me-1" style="color:#fff;">Submit &amp; Clear</button>
+            <button id="btn-cancel-clear" class="btn btn-outline-secondary btn-sm">Cancel</button>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endwith %}
+
 <div class="row g-4">
     <!-- Card 1: Location Info -->
     <div class="col-12 col-md-6">
@@ -226,6 +258,8 @@
 
     const WELD_PK = {{ weld.pk }};
     const UPDATE_URL = '/welds/weld/' + WELD_PK + '/update/';
+    const CLEAR_URL = '/welds/weld/' + WELD_PK + '/clear-validation/';
+    const UNCLEAR_URL = '/welds/weld/' + WELD_PK + '/unclear-validation/';
 
     function getCsrf() {
         const m = document.cookie.match(/csrftoken=([^;]+)/);
@@ -407,6 +441,74 @@
             activateEdit(span);
         });
     });
+
+    // --- Validation clear/unclear handlers ---
+
+    const btnClearWarning = document.getElementById('btn-clear-warning');
+    const clearForm = document.getElementById('clear-warning-form');
+    const btnCancelClear = document.getElementById('btn-cancel-clear');
+    const btnSubmitClear = document.getElementById('btn-submit-clear');
+    const btnUnclear = document.getElementById('btn-unclear');
+
+    if (btnClearWarning) {
+        btnClearWarning.addEventListener('click', function () {
+            clearForm.style.display = 'block';
+            btnClearWarning.style.display = 'none';
+        });
+    }
+
+    if (btnCancelClear) {
+        btnCancelClear.addEventListener('click', function () {
+            clearForm.style.display = 'none';
+            if (btnClearWarning) btnClearWarning.style.display = '';
+        });
+    }
+
+    if (btnSubmitClear) {
+        btnSubmitClear.addEventListener('click', function () {
+            const note = document.getElementById('clear-note-input').value.trim();
+            if (!note) {
+                showToast('✗ Please enter a note before clearing.', 'error');
+                return;
+            }
+            fetch(CLEAR_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
+                body: JSON.stringify({ note: note }),
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    showToast('✅ Warning cleared.', 'success');
+                    setTimeout(() => location.reload(), 800);
+                } else {
+                    showToast('✗ ' + (data.error || 'Failed to clear.'), 'error');
+                }
+            })
+            .catch(() => showToast('✗ Network error', 'error'));
+        });
+    }
+
+    if (btnUnclear) {
+        btnUnclear.addEventListener('click', function () {
+            if (!confirm('Remove the cleared status and re-open the validation warning?')) return;
+            fetch(UNCLEAR_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
+                body: JSON.stringify({}),
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    showToast('Warning re-opened.', 'success');
+                    setTimeout(() => location.reload(), 800);
+                } else {
+                    showToast('✗ ' + (data.error || 'Failed.'), 'error');
+                }
+            })
+            .catch(() => showToast('✗ Network error', 'error'));
+        });
+    }
 }());
 </script>
 {% endblock %}

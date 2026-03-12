@@ -1,0 +1,437 @@
+{% extends 'welds/base.html' %}
+
+{% block title %}Incomplete Records — TVA Barkley{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-heading {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--color-primary);
+        margin-bottom: 1.25rem;
+    }
+    .badge-missing {
+        background: #fb923c;
+        color: #fff;
+        font-size: 0.72rem;
+        font-weight: 600;
+        padding: 0.25em 0.55em;
+        border-radius: 0.3rem;
+        margin: 1px 2px;
+        display: inline-block;
+        white-space: nowrap;
+    }
+    #toast-incomplete {
+        position: fixed;
+        bottom: 1.5rem;
+        right: 1.5rem;
+        z-index: 9999;
+        min-width: 240px;
+        display: none;
+        padding: 0.75rem 1.1rem;
+        border-radius: 0.4rem;
+        font-size: 0.9rem;
+        font-weight: 600;
+        box-shadow: 0 4px 18px rgba(0,0,0,0.18);
+        color: #fff;
+    }
+    #toast-incomplete.show { display: block; }
+    #toast-incomplete.success { background: var(--color-success); }
+    #toast-incomplete.error { background: var(--color-danger); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="page-heading mb-0">⚠️ Incomplete Records</h1>
+    <div class="d-flex gap-2 flex-wrap">
+        <a href="{% url 'incomplete_records' %}" class="btn btn-outline-secondary btn-sm">Clear Filters</a>
+        <a href="{% url 'export_incomplete_excel' %}?{{ request.GET.urlencode }}" class="btn btn-success btn-sm">📊 Export Excel</a>
+    </div>
+</div>
+
+<p class="text-muted mb-3" style="font-size:0.9rem;">
+    Welds with at least one missing critical field (Inspector, Date, Pass/Fail, Weld Type, or Total Weld Length) that have not been cleared.
+    <strong>{{ total_count }} record{{ total_count|pluralize }}</strong> match the current filters.
+</p>
+
+<!-- Filters -->
+<div class="card mb-4">
+    <div class="card-body py-3">
+        <form method="get" class="filter-row">
+            <div class="row g-2 align-items-end">
+                <div class="col-6 col-md-3">
+                    <select name="section" class="form-select form-select-sm" onchange="this.form.submit()">
+                        <option value="">All Sections</option>
+                        {% for s in sections %}
+                        <option value="{{ s }}" {% if selected_section == s %}selected{% endif %}>{{ s }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <select name="report" class="form-select form-select-sm" onchange="this.form.submit()">
+                        <option value="">All Reports</option>
+                        {% for r in reports %}
+                        <option value="{{ r }}" {% if selected_report == r|stringformat:"s" %}selected{% endif %}>Report {{ r }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-6 col-md-3">
+                    <select name="missing_field" class="form-select form-select-sm" onchange="this.form.submit()">
+                        <option value="">Any Missing Field</option>
+                        <option value="inspector" {% if selected_missing_field == 'inspector' %}selected{% endif %}>Missing: Inspector</option>
+                        <option value="date" {% if selected_missing_field == 'date' %}selected{% endif %}>Missing: Date</option>
+                        <option value="pass_fail" {% if selected_missing_field == 'pass_fail' %}selected{% endif %}>Missing: Pass/Fail</option>
+                        <option value="weld_type" {% if selected_missing_field == 'weld_type' %}selected{% endif %}>Missing: Weld Type</option>
+                        <option value="total_weld_length" {% if selected_missing_field == 'total_weld_length' %}selected{% endif %}>Missing: Total Weld Length</option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-3">
+                    <input type="text" name="search" class="form-control form-control-sm" placeholder="Search section, weld ID…" value="{{ search }}">
+                </div>
+                <div class="col-12 col-md-auto d-flex gap-2">
+                    <button type="submit" class="btn btn-primary btn-sm px-3">Filter</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Bulk action bar -->
+<div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+    <button class="btn btn-warning btn-sm" id="btn-bulk-clear-selected" disabled style="color:#fff;">
+        ✅ Clear Selected
+    </button>
+    <button class="btn btn-outline-warning btn-sm" id="btn-bulk-clear-all">
+        ✅ Clear All Filtered ({{ total_count }})
+    </button>
+    <span id="selected-count" class="text-muted ms-2" style="font-size:0.85rem;"></span>
+</div>
+
+<!-- Table -->
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sticky-header mb-0">
+                <thead>
+                    <tr>
+                        <th style="width:2.5rem;">
+                            <input type="checkbox" id="select-all" title="Select all on this page">
+                        </th>
+                        <th>Section</th>
+                        <th>Weld ID4</th>
+                        <th>Report</th>
+                        <th>Inspector</th>
+                        <th>Date</th>
+                        <th>Pass/Fail</th>
+                        <th>Weld Type</th>
+                        <th>Total Weld Length</th>
+                        <th>Missing Fields</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for weld in welds %}
+                    {% with missing=weld.get_missing_fields %}
+                    <tr data-pk="{{ weld.pk }}">
+                        <td><input type="checkbox" class="row-check" value="{{ weld.pk }}"></td>
+                        <td>{{ weld.section }}</td>
+                        <td><a href="{% url 'weld_detail' weld.pk %}" class="section-link">{{ weld.weld_id4 }}</a></td>
+                        <td>{{ weld.report }}</td>
+                        <td>{% if not weld.inspector %}<span class="badge-missing">—</span>{% else %}{{ weld.inspector }}{% endif %}</td>
+                        <td>{% if not weld.date %}<span class="badge-missing">—</span>{% else %}{{ weld.date }}{% endif %}</td>
+                        <td>{% if not weld.pass_fail %}<span class="badge-missing">—</span>{% else %}{{ weld.pass_fail }}{% endif %}</td>
+                        <td>{% if not weld.weld_type %}<span class="badge-missing">—</span>{% else %}{{ weld.weld_type }}{% endif %}</td>
+                        <td>{% if weld.total_weld_length is None %}<span class="badge-missing">—</span>{% else %}{{ weld.total_weld_length }}{% endif %}</td>
+                        <td>
+                            {% for f in missing %}<span class="badge-missing">{{ f }}</span>{% endfor %}
+                        </td>
+                        <td>
+                            <button class="btn btn-warning btn-sm py-0 px-2 btn-clear-row" data-pk="{{ weld.pk }}" style="font-size:0.78rem; color:#fff; white-space:nowrap;">Clear Warning</button>
+                        </td>
+                    </tr>
+                    {% endwith %}
+                    {% empty %}
+                    <tr>
+                        <td colspan="11" class="text-center text-muted py-4">No incomplete records found matching your filters. 🎉</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Pagination -->
+{% if page_obj.has_other_pages %}
+<nav class="mt-4">
+    <ul class="pagination justify-content-center flex-wrap">
+        {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">← Prev</a>
+            </li>
+        {% endif %}
+        {% for num in page_obj.paginator.page_range %}
+            {% if page_obj.number == num %}
+                <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a>
+                </li>
+            {% endif %}
+        {% endfor %}
+        {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Next →</a>
+            </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+<!-- Toast -->
+<div id="toast-incomplete" role="alert" aria-live="polite"></div>
+
+<!-- Single-row Clear Warning Modal -->
+<div class="modal fade" id="clearRowModal" tabindex="-1" aria-labelledby="clearRowModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header" style="background:var(--color-primary); color:#fff;">
+                <h5 class="modal-title" id="clearRowModalLabel">⚠️ Clear Validation Warning</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-2" style="font-size:0.9rem;">Provide a note explaining why the missing data is acceptable:</p>
+                <textarea id="clear-row-note" class="form-control" rows="3" placeholder="e.g. Total weld length for this beam is unknown pending measurement…"></textarea>
+                <div id="clear-row-error" class="text-danger mt-1" style="font-size:0.85rem; display:none;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-warning" id="btn-confirm-clear-row" style="color:#fff;">✅ Clear Warning</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bulk Clear Selected Modal -->
+<div class="modal fade" id="bulkClearModal" tabindex="-1" aria-labelledby="bulkClearModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header" style="background:var(--color-primary); color:#fff;">
+                <h5 class="modal-title" id="bulkClearModalLabel">✅ Bulk Clear Selected Warnings</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-1" style="font-size:0.9rem;">Provide a single note for <strong id="bulk-selected-count">0</strong> selected weld(s):</p>
+                <textarea id="bulk-clear-note" class="form-control" rows="3" placeholder="e.g. Inspection data not available for this batch…"></textarea>
+                <div id="bulk-clear-error" class="text-danger mt-1" style="font-size:0.85rem; display:none;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-warning" id="btn-confirm-bulk-clear" style="color:#fff;">✅ Clear Selected</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bulk Clear All Filtered Modal -->
+<div class="modal fade" id="bulkClearAllModal" tabindex="-1" aria-labelledby="bulkClearAllModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header" style="background:var(--color-primary); color:#fff;">
+                <h5 class="modal-title" id="bulkClearAllModalLabel">✅ Bulk Clear All Filtered</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-1" style="font-size:0.9rem;">This will clear <strong>{{ total_count }}</strong> weld warning(s) matching the current filters.</p>
+                <p class="text-danger mb-2" style="font-size:0.85rem;">This action cannot be undone from this page (you can un-clear individual welds from their detail pages).</p>
+                <textarea id="bulk-all-note" class="form-control" rows="3" placeholder="e.g. All records in this report have unknown weld lengths pending survey…"></textarea>
+                <div id="bulk-all-error" class="text-danger mt-1" style="font-size:0.85rem; display:none;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="btn-confirm-bulk-all">✅ Clear All {{ total_count }} Records</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    'use strict';
+
+    const CSRF = (document.cookie.match(/csrftoken=([^;]+)/) || ['', ''])[1];
+    const BULK_CLEAR_URL = '{% url "weld_bulk_clear_validation" %}';
+    const BULK_ALL_URL = '{% url "weld_bulk_clear_all_filtered" %}';
+    const CURRENT_SECTION = '{{ selected_section|escapejs }}';
+    const CURRENT_REPORT = '{{ selected_report|escapejs }}';
+    const CURRENT_MISSING_FIELD = '{{ selected_missing_field|escapejs }}';
+    const CURRENT_SEARCH = '{{ search|escapejs }}';
+
+    function showToast(msg, type) {
+        const t = document.getElementById('toast-incomplete');
+        t.textContent = msg;
+        t.className = 'show ' + type;
+        clearTimeout(t._timer);
+        t._timer = setTimeout(() => { t.className = ''; }, 3500);
+    }
+
+    // ---- Checkbox management ----
+    const selectAll = document.getElementById('select-all');
+    const btnBulkSelected = document.getElementById('btn-bulk-clear-selected');
+    const selectedCountEl = document.getElementById('selected-count');
+
+    function updateSelectionUI() {
+        const checks = document.querySelectorAll('.row-check:checked');
+        const count = checks.length;
+        btnBulkSelected.disabled = count === 0;
+        if (count > 0) {
+            selectedCountEl.textContent = count + ' selected';
+        } else {
+            selectedCountEl.textContent = '';
+        }
+    }
+
+    if (selectAll) {
+        selectAll.addEventListener('change', function () {
+            document.querySelectorAll('.row-check').forEach(c => { c.checked = selectAll.checked; });
+            updateSelectionUI();
+        });
+    }
+
+    document.querySelectorAll('.row-check').forEach(c => {
+        c.addEventListener('change', function () {
+            updateSelectionUI();
+            const all = document.querySelectorAll('.row-check');
+            const checked = document.querySelectorAll('.row-check:checked');
+            if (selectAll) selectAll.checked = all.length === checked.length && all.length > 0;
+        });
+    });
+
+    // ---- Single-row Clear Warning ----
+    let pendingRowPk = null;
+    const clearRowModal = new bootstrap.Modal(document.getElementById('clearRowModal'));
+
+    document.querySelectorAll('.btn-clear-row').forEach(btn => {
+        btn.addEventListener('click', function () {
+            pendingRowPk = this.dataset.pk;
+            document.getElementById('clear-row-note').value = '';
+            document.getElementById('clear-row-error').style.display = 'none';
+            clearRowModal.show();
+        });
+    });
+
+    document.getElementById('btn-confirm-clear-row').addEventListener('click', function () {
+        const note = document.getElementById('clear-row-note').value.trim();
+        const errEl = document.getElementById('clear-row-error');
+        if (!note) { errEl.textContent = 'Please enter a note.'; errEl.style.display = ''; return; }
+        errEl.style.display = 'none';
+
+        fetch('/welds/weld/' + pendingRowPk + '/clear-validation/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+            body: JSON.stringify({ note: note }),
+        })
+        .then(r => r.json())
+        .then(data => {
+            clearRowModal.hide();
+            if (data.success) {
+                // Remove row from table
+                const row = document.querySelector('tr[data-pk="' + pendingRowPk + '"]');
+                if (row) row.remove();
+                showToast('✅ Warning cleared.', 'success');
+            } else {
+                showToast('✗ ' + (data.error || 'Failed.'), 'error');
+            }
+        })
+        .catch(() => { clearRowModal.hide(); showToast('✗ Network error', 'error'); });
+    });
+
+    // ---- Bulk Clear Selected ----
+    const bulkModal = new bootstrap.Modal(document.getElementById('bulkClearModal'));
+
+    btnBulkSelected.addEventListener('click', function () {
+        const count = document.querySelectorAll('.row-check:checked').length;
+        document.getElementById('bulk-selected-count').textContent = count;
+        document.getElementById('bulk-clear-note').value = '';
+        document.getElementById('bulk-clear-error').style.display = 'none';
+        bulkModal.show();
+    });
+
+    document.getElementById('btn-confirm-bulk-clear').addEventListener('click', function () {
+        const note = document.getElementById('bulk-clear-note').value.trim();
+        const errEl = document.getElementById('bulk-clear-error');
+        if (!note) { errEl.textContent = 'Please enter a note.'; errEl.style.display = ''; return; }
+        errEl.style.display = 'none';
+
+        const pks = Array.from(document.querySelectorAll('.row-check:checked')).map(c => parseInt(c.value));
+
+        fetch(BULK_CLEAR_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+            body: JSON.stringify({ note: note, pks: pks }),
+        })
+        .then(r => r.json())
+        .then(data => {
+            bulkModal.hide();
+            if (data.success) {
+                showToast('✅ Cleared warnings for ' + data.count + ' weld(s).', 'success');
+                // Remove cleared rows
+                pks.forEach(pk => {
+                    const row = document.querySelector('tr[data-pk="' + pk + '"]');
+                    if (row) row.remove();
+                });
+                updateSelectionUI();
+                if (selectAll) selectAll.checked = false;
+            } else {
+                showToast('✗ ' + (data.error || 'Failed.'), 'error');
+            }
+        })
+        .catch(() => { bulkModal.hide(); showToast('✗ Network error', 'error'); });
+    });
+
+    // ---- Bulk Clear All Filtered ----
+    const bulkAllModal = new bootstrap.Modal(document.getElementById('bulkClearAllModal'));
+
+    document.getElementById('btn-bulk-clear-all').addEventListener('click', function () {
+        document.getElementById('bulk-all-note').value = '';
+        document.getElementById('bulk-all-error').style.display = 'none';
+        bulkAllModal.show();
+    });
+
+    document.getElementById('btn-confirm-bulk-all').addEventListener('click', function () {
+        const note = document.getElementById('bulk-all-note').value.trim();
+        const errEl = document.getElementById('bulk-all-error');
+        if (!note) { errEl.textContent = 'Please enter a note.'; errEl.style.display = ''; return; }
+        errEl.style.display = 'none';
+
+        fetch(BULK_ALL_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+            body: JSON.stringify({
+                note: note,
+                section: CURRENT_SECTION,
+                report: CURRENT_REPORT,
+                missing_field: CURRENT_MISSING_FIELD,
+                search: CURRENT_SEARCH,
+            }),
+        })
+        .then(r => r.json())
+        .then(data => {
+            bulkAllModal.hide();
+            if (data.success) {
+                showToast('✅ Cleared warnings for ' + data.count + ' weld(s). Reloading…', 'success');
+                setTimeout(() => location.reload(), 1200);
+            } else {
+                showToast('✗ ' + (data.error || 'Failed.'), 'error');
+            }
+        })
+        .catch(() => { bulkAllModal.hide(); showToast('✗ Network error', 'error'); });
+    });
+
+}());
+</script>
+{% endblock %}

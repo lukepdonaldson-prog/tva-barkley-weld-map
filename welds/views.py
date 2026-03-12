@@ -1,13 +1,17 @@
 import json
+import io
 import re
 from datetime import date
 
 from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.shortcuts import render, get_object_or_404
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 from django.core.paginator import Paginator
 from django.db.models import Sum, Count, Q
+import openpyxl
+from openpyxl.styles import Font, PatternFill, Alignment
 from welds.models import Weld, WeldIdKey
 from welds.export_utils import generate_excel_response, generate_pdf_response
 
@@ -20,6 +24,7 @@ _WELD_EDITABLE_FIELDS = {
     'inspection_utsw', 'inspection_mt', 'inspector', 'date',
     'pass_fail', 'corrective_action_taken', 'repair_welder',
     'repair_inspection_date', 'weld_process', 'note',
+    'validation_note', 'validation_cleared',
 }
 
 
@@ -282,3 +287,211 @@ def weld_id_key_delete(request, pk):
     entry = get_object_or_404(WeldIdKey, pk=pk)
     entry.delete()
     return JsonResponse({'success': True})
+
+
+# ---------------------------------------------------------------------------
+# Incomplete records helpers
+# ---------------------------------------------------------------------------
+
+_INCOMPLETE_Q = (
+    Q(inspector='') | Q(date__isnull=True) | Q(pass_fail='') |
+    Q(weld_type='') | Q(total_weld_length__isnull=True)
+)
+
+
+def _apply_incomplete_filters(section='', report='', missing_field='', search=''):
+    """Return a queryset of not-cleared welds with at least one missing critical field,
+    with optional extra filters applied."""
+    queryset = Weld.objects.filter(validation_cleared=False).filter(_INCOMPLETE_Q)
+    if section:
+        queryset = queryset.filter(section=section)
+    if report:
+        queryset = queryset.filter(report=report)
+    if missing_field == 'inspector':
+        queryset = queryset.filter(inspector='')
+    elif missing_field == 'date':
+        queryset = queryset.filter(date__isnull=True)
+    elif missing_field == 'pass_fail':
+        queryset = queryset.filter(pass_fail='')
+    elif missing_field == 'weld_type':
+        queryset = queryset.filter(weld_type='')
+    elif missing_field == 'total_weld_length':
+        queryset = queryset.filter(total_weld_length__isnull=True)
+    if search:
+        queryset = queryset.filter(
+            Q(section__icontains=search) |
+            Q(weld_id4__icontains=search) |
+            Q(inspector__icontains=search)
+        )
+    return queryset.order_by('section', 'weld_id4')
+
+
+# ---------------------------------------------------------------------------
+# Incomplete records views
+# ---------------------------------------------------------------------------
+
+@login_required
+def incomplete_records(request):
+    """Page showing welds with missing critical fields that haven't been cleared."""
+    section = request.GET.get('section', '')
+    report = request.GET.get('report', '')
+    missing_field = request.GET.get('missing_field', '')
+    search = request.GET.get('search', '')
+
+    queryset = _apply_incomplete_filters(section, report, missing_field, search)
+    total_count = queryset.count()
+
+    # Dropdown data from all incomplete welds (unfiltered by section/report/field)
+    all_incomplete = Weld.objects.filter(validation_cleared=False).filter(_INCOMPLETE_Q)
+    sections = all_incomplete.values_list('section', flat=True).order_by('section').distinct()
+    reports = all_incomplete.values_list('report', flat=True).order_by('report').distinct()
+
+    paginator = Paginator(queryset, 50)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, 'welds/incomplete_records.html', {
+        'page_obj': page_obj,
+        'welds': page_obj.object_list,
+        'total_count': total_count,
+        'sections': sections,
+        'reports': reports,
+        'selected_section': section,
+        'selected_report': report,
+        'selected_missing_field': missing_field,
+        'search': search,
+    })
+
+
+@login_required
+def export_incomplete_excel(request):
+    """Export filtered incomplete records as an .xlsx file with a Missing Fields column."""
+    section = request.GET.get('section', '')
+    report = request.GET.get('report', '')
+    missing_field = request.GET.get('missing_field', '')
+    search = request.GET.get('search', '')
+
+    queryset = _apply_incomplete_filters(section, report, missing_field, search)
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Incomplete Records"
+
+    headers = ["Section", "Weld ID4", "Report", "Inspector", "Date",
+               "Pass/Fail", "Weld Type", "Total Weld Length", "Missing Fields"]
+    header_fill = PatternFill(start_color="C85E00", end_color="C85E00", fill_type="solid")
+    header_font = Font(bold=True, color="FFFFFF")
+
+    for col_idx, header in enumerate(headers, start=1):
+        cell = ws.cell(row=1, column=col_idx, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+
+    for weld in queryset:
+        missing = weld.get_missing_fields()
+        ws.append([
+            weld.section,
+            weld.weld_id4,
+            weld.report,
+            weld.inspector,
+            weld.date.strftime('%Y-%m-%d') if weld.date else '',
+            weld.pass_fail,
+            weld.weld_type,
+            weld.total_weld_length,
+            ', '.join(missing),
+        ])
+
+    for col in ws.columns:
+        max_length = max((len(str(cell.value)) if cell.value else 0) for cell in col)
+        ws.column_dimensions[col[0].column_letter].width = min(max_length + 4, 60)
+
+    filename = f"incomplete_records_{date.today().strftime('%Y-%m-%d')}.xlsx"
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+    response = HttpResponse(
+        buffer.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+
+@login_required
+@require_POST
+def weld_clear_validation(request, pk):
+    """AJAX: clear the validation warning for a weld by providing a note."""
+    weld = get_object_or_404(Weld, pk=pk)
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+
+    note = data.get('note', '').strip()
+    if not note:
+        return JsonResponse({'success': False, 'error': 'A note is required to clear the warning.'}, status=400)
+
+    weld.validation_note = note
+    weld.validation_cleared = True
+    weld.save(update_fields=['validation_note', 'validation_cleared', 'updated_at'])
+    return JsonResponse({'success': True})
+
+
+@login_required
+@require_POST
+def weld_unclear_validation(request, pk):
+    """AJAX: remove the validation-cleared status from a weld."""
+    weld = get_object_or_404(Weld, pk=pk)
+    weld.validation_note = ''
+    weld.validation_cleared = False
+    weld.save(update_fields=['validation_note', 'validation_cleared', 'updated_at'])
+    return JsonResponse({'success': True})
+
+
+@login_required
+@require_POST
+def weld_bulk_clear_validation(request):
+    """AJAX: clear validation warnings for a list of weld PKs."""
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+
+    note = data.get('note', '').strip()
+    pks = data.get('pks', [])
+
+    if not note:
+        return JsonResponse({'success': False, 'error': 'A note is required to clear the warnings.'}, status=400)
+    if not pks:
+        return JsonResponse({'success': False, 'error': 'No welds selected.'}, status=400)
+
+    count = Weld.objects.filter(pk__in=pks).update(
+        validation_note=note,
+        validation_cleared=True,
+        updated_at=timezone.now(),
+    )
+    return JsonResponse({'success': True, 'count': count})
+
+
+@login_required
+@require_POST
+def weld_bulk_clear_all_filtered(request):
+    """AJAX: clear validation warnings for ALL welds matching the current filters."""
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+
+    note = data.get('note', '').strip()
+    if not note:
+        return JsonResponse({'success': False, 'error': 'A note is required.'}, status=400)
+
+    section = data.get('section', '')
+    report = data.get('report', '')
+    missing_field = data.get('missing_field', '')
+    search = data.get('search', '')
+
+    queryset = _apply_incomplete_filters(section, report, missing_field, search)
+    count = queryset.update(validation_note=note, validation_cleared=True, updated_at=timezone.now())
+    return JsonResponse({'success': True, 'count': count})

@@ -46,6 +46,15 @@
             <div class="stat-label">Fail</div>
         </div>
     </div>
+    <div class="col-6 col-md-3">
+        <a href="{% url 'incomplete_records' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}" class="text-decoration-none">
+            <div class="stat-card stat-warning" style="cursor:pointer;">
+                <span class="stat-icon">⚠️</span>
+                <div class="stat-value">{{ incomplete_count }}</div>
+                <div class="stat-label">Incomplete</div>
+            </div>
+        </a>
+    </div>
 </div>
 
 <!-- Filters -->

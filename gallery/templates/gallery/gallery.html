@@ -142,6 +142,48 @@
         z-index: 1051;
     }
     .modal-close:hover { opacity: 1; }
+
+    /* Inline edit */
+    .photo-editable {
+        cursor: pointer;
+        border-bottom: 1px dashed transparent;
+        transition: border-color 0.15s;
+        display: inline;
+    }
+    .photo-editable:hover {
+        border-bottom-color: var(--color-accent);
+    }
+    .photo-editable.saved-flash {
+        background: #d4edda;
+        border-radius: 0.2rem;
+        transition: background 0.8s ease;
+    }
+    .photo-edit-input {
+        width: 100%;
+        padding: 0.1rem 0.3rem;
+        font-size: inherit;
+        border: 1px solid var(--color-accent);
+        border-radius: 0.25rem;
+        background: #fff;
+    }
+    /* Toast */
+    #gallery-toast {
+        position: fixed;
+        bottom: 1.5rem;
+        right: 1.5rem;
+        z-index: 9999;
+        min-width: 220px;
+        display: none;
+        padding: 0.75rem 1.1rem;
+        border-radius: 0.4rem;
+        font-size: 0.9rem;
+        font-weight: 600;
+        box-shadow: 0 4px 18px rgba(0,0,0,0.18);
+        color: #fff;
+    }
+    #gallery-toast.show { display: block; }
+    #gallery-toast.success { background: var(--color-success); }
+    #gallery-toast.error { background: var(--color-danger); }
 </style>
 {% endblock %}
 
@@ -230,7 +272,7 @@
         </div>
         <div class="photo-card-body">
             <div class="photo-meta">
-                <strong>{{ photo.section }}</strong>
+                <strong><span class="photo-editable" data-pk="{{ photo.pk }}" data-field="section" title="Click to edit section">{{ photo.section }}</span></strong>
                 <span>&bull;</span>
                 <span>Report {{ photo.report_number }}</span>
                 <button class="copy-btn" onclick="copyToClipboard('{{ photo.section }}')" title="Copy section">📋</button>
@@ -238,7 +280,9 @@
             <div class="photo-meta">
                 <span>📁 {{ photo.subfolder }}</span>
             </div>
-            <div class="photo-desc">{{ photo.description|default:photo.original_filename|truncatechars:70 }}</div>
+            <div class="photo-desc">
+                <span class="photo-editable" data-pk="{{ photo.pk }}" data-field="description" title="Click to edit description">{{ photo.description|default:photo.original_filename|truncatechars:70 }}</span>
+            </div>
             <div class="photo-actions">
                 <a href="{{ photo.photo.url }}" download class="download-btn">⬇ Download</a>
             </div>
@@ -273,6 +317,10 @@
     <button class="modal-close" onclick="closeModal()" aria-label="Close">&times;</button>
     <img id="modal-img" alt="Full size photo" onclick="event.stopPropagation()">
 </div>
+
+<!-- Toast -->
+<div id="gallery-toast" role="alert" aria-live="polite"></div>
+
 {% endblock %}
 
 {% block extra_js %}
@@ -302,5 +350,98 @@
             : "{% url 'export_photos_zip' %}";
         window.location.href = url + '?' + params.toString();
     }
+
+    // Inline editing for photo description and section
+    (function () {
+        'use strict';
+
+        function getCsrf() {
+            const m = document.cookie.match(/csrftoken=([^;]+)/);
+            return m ? m[1] : '';
+        }
+
+        function showToast(msg, type) {
+            const t = document.getElementById('gallery-toast');
+            t.textContent = msg;
+            t.className = 'show ' + type;
+            clearTimeout(t._timer);
+            t._timer = setTimeout(() => { t.className = ''; }, 3000);
+        }
+
+        function activateEdit(span) {
+            if (span.querySelector('input')) return;
+            const pk = span.dataset.pk;
+            const field = span.dataset.field;
+            const originalText = span.textContent.trim();
+
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'photo-edit-input';
+            input.value = originalText;
+            span.textContent = '';
+            span.appendChild(input);
+            input.focus();
+
+            let saved = false;
+
+            function doSave(newVal) {
+                if (saved) return;
+                saved = true;
+                span.removeChild(input);
+
+                fetch('/gallery/photo/' + pk + '/update/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrf(),
+                    },
+                    body: JSON.stringify({ [field]: newVal }),
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        span.textContent = newVal || originalText;
+                        span.classList.add('saved-flash');
+                        setTimeout(() => span.classList.remove('saved-flash'), 900);
+                        showToast('✓ Saved', 'success');
+                    } else {
+                        span.textContent = originalText;
+                        showToast('✗ ' + (data.error || 'Save failed'), 'error');
+                    }
+                })
+                .catch(() => {
+                    span.textContent = originalText;
+                    showToast('✗ Network error', 'error');
+                });
+            }
+
+            function revert() {
+                if (saved) return;
+                saved = true;
+                span.removeChild(input);
+                span.textContent = originalText;
+            }
+
+            input.addEventListener('blur', function () { doSave(input.value); });
+            input.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    input.removeEventListener('blur', doSave);
+                    doSave(input.value);
+                } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    input.removeEventListener('blur', doSave);
+                    revert();
+                }
+            });
+        }
+
+        document.querySelectorAll('.photo-editable').forEach(function (span) {
+            span.addEventListener('click', function (e) {
+                e.stopPropagation();
+                activateEdit(span);
+            });
+        });
+    }());
 </script>
 {% endblock %}

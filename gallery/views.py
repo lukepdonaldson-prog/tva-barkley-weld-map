@@ -1,17 +1,22 @@
 import io
+import json
 import zipfile
 from datetime import date
 
-from django.http import HttpResponse
-from django.shortcuts import render
+from django.http import HttpResponse, JsonResponse
+from django.shortcuts import render, get_object_or_404
 from welds.models import Weld, WeldPhoto
 from django.core.paginator import Paginator
 from django.db.models import Q
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_POST
 from welds.export_utils import generate_excel_response, generate_pdf_response
 
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment
+
+# Fields that may be edited via the inline-edit API
+_PHOTO_EDITABLE_FIELDS = {'description', 'section'}
 
 
 def _apply_qa_filters(request):
@@ -249,3 +254,29 @@ def export_photos_zip(request):
     response = HttpResponse(buffer.read(), content_type='application/zip')
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     return response
+
+
+@login_required
+@require_POST
+def photo_update(request, pk):
+    """AJAX endpoint: update editable fields on a WeldPhoto record."""
+    photo = get_object_or_404(WeldPhoto, pk=pk)
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+
+    for field, value in data.items():
+        if field not in _PHOTO_EDITABLE_FIELDS:
+            return JsonResponse(
+                {'success': False, 'error': f'Field "{field}" is not editable'},
+                status=400,
+            )
+        setattr(photo, field, value)
+
+    try:
+        photo.save()
+    except Exception as exc:
+        return JsonResponse({'success': False, 'error': str(exc)}, status=400)
+
+    return JsonResponse({'success': True})

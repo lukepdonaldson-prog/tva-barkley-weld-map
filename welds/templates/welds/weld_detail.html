@@ -45,6 +45,61 @@
     .badge-pass-lg { background: var(--color-success); color: #fff; }
     .badge-fail-lg { background: var(--color-danger); color: #fff; }
     .nav-btn-group { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end; }
+
+    /* Inline edit */
+    .editable-span {
+        cursor: pointer;
+        border-bottom: 1px dashed transparent;
+        transition: border-color 0.15s;
+        min-width: 2em;
+        display: inline-block;
+    }
+    .editable-span:hover {
+        border-bottom-color: var(--color-accent);
+    }
+    .editable-span.saving {
+        opacity: 0.6;
+    }
+    .editable-span.saved-flash {
+        background: #d4edda;
+        border-radius: 0.2rem;
+        transition: background 0.8s ease;
+    }
+    .edit-inline-input {
+        padding: 0.1rem 0.35rem;
+        font-size: 0.92rem;
+        border: 1px solid var(--color-accent);
+        border-radius: 0.25rem;
+        background: #fff;
+        min-width: 100px;
+    }
+    .edit-inline-input:focus {
+        outline: 2px solid var(--color-accent);
+        outline-offset: 1px;
+    }
+    textarea.edit-inline-input {
+        width: 100%;
+        min-height: 80px;
+        resize: vertical;
+    }
+    /* Toast */
+    #detail-toast {
+        position: fixed;
+        bottom: 1.5rem;
+        right: 1.5rem;
+        z-index: 9999;
+        min-width: 220px;
+        display: none;
+        padding: 0.75rem 1.1rem;
+        border-radius: 0.4rem;
+        font-size: 0.9rem;
+        font-weight: 600;
+        box-shadow: 0 4px 18px rgba(0,0,0,0.18);
+        color: #fff;
+    }
+    #detail-toast.show { display: block; }
+    #detail-toast.success { background: var(--color-success); }
+    #detail-toast.error { background: var(--color-danger); }
 </style>
 {% endblock %}
 
@@ -71,7 +126,7 @@
 </div>
 
 <!-- Pass/Fail banner -->
-<div class="mb-4">
+<div class="mb-4" id="pass-fail-banner">
     {% if weld.pass_fail == 'Pass' %}
         <span class="badge-pass-lg">✓ PASS</span>
     {% elif weld.pass_fail == 'Fail' %}
@@ -87,13 +142,13 @@
         <div class="card detail-card h-100">
             <div class="card-header">📍 Location Information</div>
             <div class="card-body">
-                <div class="detail-field"><strong>Report</strong> <span>{{ weld.report }}</span></div>
-                <div class="detail-field"><strong>Side</strong> <span>{{ weld.side }}</span></div>
-                <div class="detail-field"><strong>Section</strong> <span>{{ weld.section }}</span></div>
-                <div class="detail-field"><strong>Weld ID</strong> <span>{{ weld.weld_id }}</span></div>
-                <div class="detail-field"><strong>Weld ID2</strong> <span>{{ weld.weld_id2 }}</span></div>
-                <div class="detail-field"><strong>Weld ID3</strong> <span>{{ weld.weld_id3 }}</span></div>
-                <div class="detail-field"><strong>Weld ID4</strong> <span>{{ weld.weld_id4 }}</span></div>
+                <div class="detail-field"><strong>Report</strong> <span class="editable-span" data-field="report" data-type="number">{{ weld.report }}</span></div>
+                <div class="detail-field"><strong>Side</strong> <span class="editable-span" data-field="side">{{ weld.side }}</span></div>
+                <div class="detail-field"><strong>Section</strong> <span class="editable-span" data-field="section">{{ weld.section }}</span></div>
+                <div class="detail-field"><strong>Weld ID</strong> <span class="editable-span" data-field="weld_id">{{ weld.weld_id }}</span></div>
+                <div class="detail-field"><strong>Weld ID2</strong> <span class="editable-span" data-field="weld_id2">{{ weld.weld_id2 }}</span></div>
+                <div class="detail-field"><strong>Weld ID3</strong> <span class="editable-span" data-field="weld_id3">{{ weld.weld_id3 }}</span></div>
+                <div class="detail-field"><strong>Weld ID4</strong> <span class="editable-span" data-field="weld_id4">{{ weld.weld_id4 }}</span></div>
             </div>
         </div>
     </div>
@@ -103,16 +158,16 @@
         <div class="card detail-card h-100">
             <div class="card-header">🔬 Inspection Details</div>
             <div class="card-body">
-                <div class="detail-field"><strong>Weld Type</strong> <span>{{ weld.weld_type }}</span></div>
-                <div class="detail-field"><strong>Weld Size</strong> <span>{{ weld.weld_size }}</span></div>
-                <div class="detail-field"><strong>WPS #</strong> <span>{{ weld.wps_number }}</span></div>
-                <div class="detail-field"><strong>Table 6.1 Criteria 1</strong> <span>{{ weld.table_61_criteria_1 }}</span></div>
-                <div class="detail-field"><strong>Table 6.1 Criteria 2</strong> <span>{{ weld.table_61_criteria_2 }}</span></div>
-                <div class="detail-field"><strong>Table 6.1 Criteria 3</strong> <span>{{ weld.table_61_criteria_3 }}</span></div>
-                <div class="detail-field"><strong>Inspection UTSW</strong> <span>{{ weld.inspection_utsw }}</span></div>
-                <div class="detail-field"><strong>Inspection MT</strong> <span>{{ weld.inspection_mt }}</span></div>
-                <div class="detail-field"><strong>Inspector</strong> <span>{{ weld.inspector }}</span></div>
-                <div class="detail-field"><strong>Date</strong> <span>{{ weld.inspection_date|date:"M d, Y" }}</span></div>
+                <div class="detail-field"><strong>Weld Type</strong> <span class="editable-span" data-field="weld_type">{{ weld.weld_type }}</span></div>
+                <div class="detail-field"><strong>Weld Size</strong> <span class="editable-span" data-field="weld_size">{{ weld.weld_size }}</span></div>
+                <div class="detail-field"><strong>WPS #</strong> <span class="editable-span" data-field="wps_number">{{ weld.wps_number }}</span></div>
+                <div class="detail-field"><strong>Table 6.1 Criteria 1</strong> <span class="editable-span" data-field="table_6_1_criteria_1">{{ weld.table_6_1_criteria_1 }}</span></div>
+                <div class="detail-field"><strong>Table 6.1 Criteria 2</strong> <span class="editable-span" data-field="table_6_1_criteria_2">{{ weld.table_6_1_criteria_2 }}</span></div>
+                <div class="detail-field"><strong>Table 6.1 Criteria 3</strong> <span class="editable-span" data-field="table_6_1_criteria_3">{{ weld.table_6_1_criteria_3 }}</span></div>
+                <div class="detail-field"><strong>Inspection UTSW</strong> <span class="editable-span" data-field="inspection_utsw">{{ weld.inspection_utsw }}</span></div>
+                <div class="detail-field"><strong>Inspection MT</strong> <span class="editable-span" data-field="inspection_mt">{{ weld.inspection_mt }}</span></div>
+                <div class="detail-field"><strong>Inspector</strong> <span class="editable-span" data-field="inspector">{{ weld.inspector }}</span></div>
+                <div class="detail-field"><strong>Date</strong> <span class="editable-span" data-field="date" data-type="date" data-raw="{{ weld.date|date:'Y-m-d' }}">{{ weld.date|date:"M d, Y" }}</span></div>
             </div>
         </div>
     </div>
@@ -122,12 +177,13 @@
         <div class="card detail-card h-100">
             <div class="card-header">🛠 Results &amp; Repair</div>
             <div class="card-body">
-                <div class="detail-field"><strong>Est. Repair Length</strong> <span>{{ weld.estimated_repair_length }}</span></div>
-                <div class="detail-field"><strong>Total Weld Length</strong> <span>{{ weld.total_weld_length }}</span></div>
-                <div class="detail-field"><strong>Corrective Action</strong> <span>{{ weld.corrective_action_taken }}</span></div>
-                <div class="detail-field"><strong>Repair Welder</strong> <span>{{ weld.repair_welder }}</span></div>
-                <div class="detail-field"><strong>Repair Insp. Date</strong> <span>{{ weld.repair_inspection_date|date:"M d, Y" }}</span></div>
-                <div class="detail-field"><strong>Weld Process</strong> <span>{{ weld.weld_process }}</span></div>
+                <div class="detail-field"><strong>Pass / Fail</strong> <span class="editable-span" data-field="pass_fail" data-type="passfail">{{ weld.pass_fail }}</span></div>
+                <div class="detail-field"><strong>Est. Repair Length</strong> <span class="editable-span" data-field="estimated_repair_length" data-type="number">{{ weld.estimated_repair_length }}</span></div>
+                <div class="detail-field"><strong>Total Weld Length</strong> <span class="editable-span" data-field="total_weld_length" data-type="number">{{ weld.total_weld_length }}</span></div>
+                <div class="detail-field"><strong>Corrective Action</strong> <span class="editable-span" data-field="corrective_action_taken">{{ weld.corrective_action_taken }}</span></div>
+                <div class="detail-field"><strong>Repair Welder</strong> <span class="editable-span" data-field="repair_welder">{{ weld.repair_welder }}</span></div>
+                <div class="detail-field"><strong>Repair Insp. Date</strong> <span class="editable-span" data-field="repair_inspection_date" data-type="date" data-raw="{{ weld.repair_inspection_date|date:'Y-m-d' }}">{{ weld.repair_inspection_date|date:"M d, Y" }}</span></div>
+                <div class="detail-field"><strong>Weld Process</strong> <span class="editable-span" data-field="weld_process">{{ weld.weld_process }}</span></div>
             </div>
         </div>
     </div>
@@ -137,9 +193,205 @@
         <div class="card detail-card h-100">
             <div class="card-header">📝 Notes</div>
             <div class="card-body">
-                <div style="font-size:0.92rem; line-height:1.7;">{{ weld.note|linebreaks }}</div>
+                <span class="editable-span" data-field="note" data-type="textarea" style="display:block; font-size:0.92rem; line-height:1.7; white-space:pre-wrap;">{{ weld.note }}</span>
             </div>
         </div>
     </div>
 </div>
+
+<!-- Toast -->
+<div id="detail-toast" role="alert" aria-live="polite"></div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    'use strict';
+
+    const WELD_PK = {{ weld.pk }};
+    const UPDATE_URL = '/welds/weld/' + WELD_PK + '/update/';
+
+    function getCsrf() {
+        const m = document.cookie.match(/csrftoken=([^;]+)/);
+        return m ? m[1] : '';
+    }
+
+    function showToast(msg, type) {
+        const t = document.getElementById('detail-toast');
+        t.textContent = msg;
+        t.className = 'show ' + type;
+        clearTimeout(t._timer);
+        t._timer = setTimeout(() => { t.className = ''; }, 3000);
+    }
+
+    function makeInput(span) {
+        const field = span.dataset.field;
+        const dtype = span.dataset.type || 'text';
+        let input;
+
+        if (dtype === 'textarea') {
+            input = document.createElement('textarea');
+            input.className = 'edit-inline-input';
+            input.value = span.textContent.trim();
+        } else if (dtype === 'passfail') {
+            input = document.createElement('select');
+            input.className = 'edit-inline-input';
+            [['', '—'], ['Pass', 'Pass'], ['Fail', 'Fail']].forEach(([val, lbl]) => {
+                const opt = document.createElement('option');
+                opt.value = val;
+                opt.textContent = lbl;
+                if (span.textContent.trim() === val) opt.selected = true;
+                input.appendChild(opt);
+            });
+        } else if (dtype === 'date') {
+            input = document.createElement('input');
+            input.type = 'date';
+            input.className = 'edit-inline-input';
+            input.value = span.dataset.raw || '';
+        } else if (dtype === 'number') {
+            input = document.createElement('input');
+            input.type = 'number';
+            input.step = '0.01';
+            input.className = 'edit-inline-input';
+            input.value = span.textContent.trim();
+        } else {
+            input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'edit-inline-input';
+            input.value = span.textContent.trim();
+        }
+        return input;
+    }
+
+    function formatDisplayValue(field, dtype, rawValue) {
+        if (dtype === 'date' && rawValue) {
+            // Format YYYY-MM-DD → "Mon DD, YYYY"
+            const d = new Date(rawValue + 'T00:00:00');
+            if (!isNaN(d)) {
+                return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            }
+        }
+        return rawValue;
+    }
+
+    function saveField(span, input) {
+        const field = span.dataset.field;
+        const dtype = span.dataset.type || 'text';
+        const value = input.value;
+        const originalText = span.textContent;
+        const originalRaw = span.dataset.raw || '';
+
+        span.classList.add('saving');
+        span.style.display = 'inline-block';
+
+        fetch(UPDATE_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrf(),
+            },
+            body: JSON.stringify({ [field]: value }),
+        })
+        .then(r => r.json())
+        .then(data => {
+            span.classList.remove('saving');
+            if (data.success) {
+                // Update display
+                if (dtype === 'date') {
+                    span.dataset.raw = value;
+                    span.textContent = formatDisplayValue(field, dtype, value) || '';
+                } else {
+                    span.textContent = value;
+                }
+                // Flash confirmation
+                span.classList.add('saved-flash');
+                setTimeout(() => span.classList.remove('saved-flash'), 900);
+                // Update pass/fail banner if needed
+                if (field === 'pass_fail') {
+                    updatePassFailBanner(value);
+                }
+                showToast('✓ Saved', 'success');
+            } else {
+                span.textContent = originalText;
+                if (originalRaw) span.dataset.raw = originalRaw;
+                showToast('✗ ' + (data.error || 'Save failed'), 'error');
+            }
+        })
+        .catch(() => {
+            span.classList.remove('saving');
+            span.textContent = originalText;
+            if (originalRaw) span.dataset.raw = originalRaw;
+            showToast('✗ Network error', 'error');
+        });
+    }
+
+    function updatePassFailBanner(value) {
+        const banner = document.getElementById('pass-fail-banner');
+        if (!banner) return;
+        if (value === 'Pass') {
+            banner.innerHTML = '<span class="badge-pass-lg">✓ PASS</span>';
+        } else if (value === 'Fail') {
+            banner.innerHTML = '<span class="badge-fail-lg">✗ FAIL</span>';
+        } else {
+            banner.innerHTML = '<span class="badge bg-secondary fs-6">' + value + '</span>';
+        }
+    }
+
+    function activateEdit(span) {
+        if (span.querySelector('input, textarea, select')) return; // already editing
+        const originalText = span.textContent;
+        const dtype = span.dataset.type || 'text';
+
+        const input = makeInput(span);
+        span.textContent = '';
+        span.appendChild(input);
+
+        // Focus
+        setTimeout(() => input.focus(), 0);
+
+        let saved = false;
+
+        function commit() {
+            if (saved) return;
+            saved = true;
+            const newVal = input.value;
+            span.removeChild(input);
+            saveField(span, { value: newVal });
+        }
+
+        function revert() {
+            if (saved) return;
+            saved = true;
+            span.removeChild(input);
+            span.textContent = originalText;
+        }
+
+        input.addEventListener('blur', commit);
+
+        input.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && dtype !== 'textarea') {
+                e.preventDefault();
+                input.removeEventListener('blur', commit);
+                saved = true;
+                const newVal = input.value;
+                span.removeChild(input);
+                saveField(span, { value: newVal });
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                input.removeEventListener('blur', commit);
+                revert();
+            }
+        });
+    }
+
+    // Attach click handlers to all editable spans
+    document.querySelectorAll('.editable-span').forEach(function (span) {
+        span.title = 'Click to edit';
+        span.addEventListener('click', function () {
+            activateEdit(span);
+        });
+    });
+}());
+</script>
 {% endblock %}

@@ -254,6 +254,9 @@
                         <a class="nav-link {% if request.path == '/gallery/qa-dashboard/' %}active{% endif %}" href="{% url 'qa_dashboard' %}">🔒 QA Dashboard</a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link {% if request.path|slice:':8' == '/import/' %}active{% endif %}" href="{% url 'import_page' %}">📥 Import</a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" href="/admin/">⚙️ Admin</a>
                     </li>
                     {% if user.is_authenticated %}

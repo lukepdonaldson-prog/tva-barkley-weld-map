@@ -11,6 +11,7 @@ urlpatterns = [
     path('accounts/', include('django.contrib.auth.urls')),
     path('gallery/', include('gallery.urls')),
     path('welds/', include('welds.urls')),
+    path('import/', include('welds.import_urls')),
 ]
 
 if settings.DEBUG:

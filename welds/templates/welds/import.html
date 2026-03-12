@@ -1,0 +1,449 @@
+{% extends "welds/base.html" %}
+{% block title %}Import Data — TVA Barkley Weld Map{% endblock %}
+
+{% block extra_css %}
+<style>
+    .drop-zone {
+        border: 2.5px dashed var(--color-accent);
+        border-radius: var(--radius);
+        background: var(--color-card-bg);
+        padding: 2.5rem 1.5rem;
+        text-align: center;
+        cursor: pointer;
+        transition: background 0.2s, border-color 0.2s;
+        position: relative;
+    }
+    .drop-zone.dragover {
+        background: #eef4fb;
+        border-color: #1a4a75;
+    }
+    .drop-zone .dz-icon {
+        font-size: 3rem;
+        display: block;
+        margin-bottom: 0.75rem;
+        pointer-events: none;
+    }
+    .drop-zone .dz-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--color-text);
+        pointer-events: none;
+    }
+    .drop-zone .dz-subtitle {
+        font-size: 0.85rem;
+        color: var(--color-text-muted);
+        margin-top: 0.3rem;
+        pointer-events: none;
+    }
+    .drop-zone input[type="file"] {
+        display: none;
+    }
+    .progress-wrapper {
+        margin-top: 1rem;
+    }
+    .results-box {
+        margin-top: 1rem;
+        padding: 0.85rem 1rem;
+        border-radius: var(--radius);
+        font-size: 0.92rem;
+    }
+    .results-box.success {
+        background: #eafaf1;
+        border: 1px solid #28a745;
+        color: #155724;
+    }
+    .results-box.danger {
+        background: #fdf0f1;
+        border: 1px solid #dc3545;
+        color: #721c24;
+    }
+    .file-list {
+        margin-top: 0.75rem;
+        max-height: 160px;
+        overflow-y: auto;
+        font-size: 0.82rem;
+        color: var(--color-text-muted);
+    }
+    .file-list li {
+        list-style: none;
+        padding: 0.15rem 0;
+    }
+    .file-list li.ok  { color: #28a745; }
+    .file-list li.err { color: #dc3545; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center mb-4 gap-3">
+    <span style="font-size:2rem;">📥</span>
+    <div>
+        <h2 class="mb-0 fw-bold">Import Data</h2>
+        <p class="text-muted mb-0" style="font-size:0.92rem;">
+            Drag-and-drop photos or an Excel weld report to import directly from your browser.
+        </p>
+    </div>
+</div>
+
+<div class="row g-4">
+
+    <!-- ===== Zone 1: Photo Import ===== -->
+    <div class="col-lg-6">
+        <div class="card h-100 p-4">
+            <h5 class="fw-bold mb-1">📷 Photo Import</h5>
+            <p class="text-muted mb-3" style="font-size:0.88rem;">
+                Drag a folder of weld photos (or select individual images). Supported: <code>.jpg</code>, <code>.jpeg</code>, <code>.png</code>.
+            </p>
+
+            <div class="drop-zone" id="photo-drop-zone">
+                <span class="dz-icon">🖼️</span>
+                <div class="dz-title">Drop photo folder here</div>
+                <div class="dz-subtitle">or click to select images</div>
+                <input type="file" id="photo-input" accept=".jpg,.jpeg,.png" multiple>
+            </div>
+
+            <div class="progress-wrapper" id="photo-progress-wrapper" style="display:none;">
+                <div class="d-flex justify-content-between mb-1">
+                    <small class="text-muted">Uploading…</small>
+                    <small id="photo-progress-label" class="text-muted">0 / 0</small>
+                </div>
+                <div class="progress" style="height:10px;">
+                    <div class="progress-bar bg-primary" id="photo-progress-bar" role="progressbar" style="width:0%"></div>
+                </div>
+            </div>
+
+            <div id="photo-results"></div>
+            <ul class="file-list" id="photo-file-list"></ul>
+        </div>
+    </div>
+
+    <!-- ===== Zone 2: Excel Weld Import ===== -->
+    <div class="col-lg-6">
+        <div class="card h-100 p-4">
+            <h5 class="fw-bold mb-1">📊 Excel Weld Report Import</h5>
+            <p class="text-muted mb-3" style="font-size:0.88rem;">
+                Drag one or more <code>.xlsx</code> weld report files. Records will be created or updated using Section + Weld ID4 as the unique key.
+            </p>
+
+            <div class="drop-zone" id="excel-drop-zone">
+                <span class="dz-icon">📑</span>
+                <div class="dz-title">Drop .xlsx file(s) here</div>
+                <div class="dz-subtitle">or click to select files</div>
+                <input type="file" id="excel-input" accept=".xlsx" multiple>
+            </div>
+
+            <div class="progress-wrapper" id="excel-progress-wrapper" style="display:none;">
+                <div class="d-flex justify-content-between mb-1">
+                    <small class="text-muted">Processing…</small>
+                    <small id="excel-progress-label" class="text-muted">0 / 0</small>
+                </div>
+                <div class="progress" style="height:10px;">
+                    <div class="progress-bar bg-success" id="excel-progress-bar" role="progressbar" style="width:0%"></div>
+                </div>
+            </div>
+
+            <div id="excel-results"></div>
+            <ul class="file-list" id="excel-file-list"></ul>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    "use strict";
+
+    const CSRF_TOKEN = "{{ csrf_token }}";
+
+    // -----------------------------------------------------------------------
+    // Generic drag-zone wiring
+    // -----------------------------------------------------------------------
+    function wireDragZone(zoneEl, inputEl) {
+        zoneEl.addEventListener('click', () => inputEl.click());
+
+        ['dragenter', 'dragover'].forEach(evt => {
+            zoneEl.addEventListener(evt, e => {
+                e.preventDefault();
+                e.stopPropagation();
+                zoneEl.classList.add('dragover');
+            });
+        });
+        ['dragleave', 'drop'].forEach(evt => {
+            zoneEl.addEventListener(evt, e => {
+                e.preventDefault();
+                e.stopPropagation();
+                zoneEl.classList.remove('dragover');
+            });
+        });
+    }
+
+    // -----------------------------------------------------------------------
+    // Section extraction (ported from import_photos.py)
+    // -----------------------------------------------------------------------
+    function normalizeSection(s) {
+        return s.replace(/^([A-Za-z]+)(\d)/, '$1-$2').toUpperCase();
+    }
+
+    function extractSectionFromFilename(filename) {
+        let name = filename.replace(/\.[^/.]+$/, '');   // strip extension
+        name = name.replace(/^\d+\s+/, '');              // strip leading numbers
+        const m = name.match(/^([A-Za-z]{1,3}[-.']?\d+(?:\.\d+)?(?:\([A-Za-z0-9]+\))?)\s*(.*)/);
+        if (m) {
+            return { section: normalizeSection(m[1]), description: m[2].trim() };
+        }
+        return { section: '', description: name };
+    }
+
+    function extractReportNumber(pathParts) {
+        for (const part of pathParts) {
+            if (/^\d+[A-Za-z]?$/.test(part)) return part;
+        }
+        return '';
+    }
+
+    // -----------------------------------------------------------------------
+    // Collect all image files from a DataTransfer (handles folders via webkitdirectory)
+    // -----------------------------------------------------------------------
+    function collectImageFiles(dataTransfer) {
+        return new Promise(resolve => {
+            const files = [];
+            const items = dataTransfer.items;
+
+            if (!items || items.length === 0) {
+                resolve(files);
+                return;
+            }
+
+            // Use FileSystemEntry API for folder traversal if available
+            const entries = [];
+            for (let i = 0; i < items.length; i++) {
+                const item = items[i];
+                const entry = item.webkitGetAsEntry ? item.webkitGetAsEntry() : null;
+                if (entry) entries.push(entry);
+                else if (item.kind === 'file') {
+                    // fallback
+                    const f = item.getAsFile();
+                    if (f) files.push({ file: f, relativePath: f.name });
+                }
+            }
+
+            if (entries.length === 0) { resolve(files); return; }
+
+            let pending = 0;
+
+            function readEntry(entry, pathPrefix) {
+                if (entry.isFile) {
+                    pending++;
+                    entry.file(f => {
+                        const relPath = pathPrefix ? pathPrefix + '/' + f.name : f.name;
+                        if (/\.(jpe?g|png)$/i.test(f.name)) {
+                            files.push({ file: f, relativePath: relPath });
+                        }
+                        pending--;
+                        if (pending === 0) resolve(files);
+                    }, () => { pending--; if (pending === 0) resolve(files); });
+                } else if (entry.isDirectory) {
+                    pending++;
+                    const reader = entry.createReader();
+                    function readAll(accumEntries) {
+                        reader.readEntries(batch => {
+                            if (batch.length === 0) {
+                                pending--;
+                                for (const e of accumEntries) {
+                                    readEntry(e, pathPrefix ? pathPrefix + '/' + entry.name : entry.name);
+                                }
+                                if (pending === 0) resolve(files);
+                            } else {
+                                readAll(accumEntries.concat(Array.from(batch)));
+                            }
+                        }, () => { pending--; if (pending === 0) resolve(files); });
+                    }
+                    readAll([]);
+                }
+            }
+
+            for (const e of entries) readEntry(e, '');
+            if (pending === 0) resolve(files);  // all entries were immediate files added via fallback
+        });
+    }
+
+    // -----------------------------------------------------------------------
+    // Photo upload
+    // -----------------------------------------------------------------------
+    const photoZone    = document.getElementById('photo-drop-zone');
+    const photoInput   = document.getElementById('photo-input');
+    const photoProgWrap = document.getElementById('photo-progress-wrapper');
+    const photoProgBar  = document.getElementById('photo-progress-bar');
+    const photoProgLbl  = document.getElementById('photo-progress-label');
+    const photoResults  = document.getElementById('photo-results');
+    const photoFileList = document.getElementById('photo-file-list');
+
+    wireDragZone(photoZone, photoInput);
+
+    photoZone.addEventListener('drop', async e => {
+        const imageFiles = await collectImageFiles(e.dataTransfer);
+        if (imageFiles.length) uploadPhotos(imageFiles);
+    });
+
+    photoInput.addEventListener('change', () => {
+        const imageFiles = Array.from(photoInput.files)
+            .filter(f => /\.(jpe?g|png)$/i.test(f.name))
+            .map(f => ({ file: f, relativePath: f.name }));
+        if (imageFiles.length) uploadPhotos(imageFiles);
+        photoInput.value = '';
+    });
+
+    async function uploadPhotos(imageFiles) {
+        photoResults.innerHTML = '';
+        photoFileList.innerHTML = '';
+        photoProgWrap.style.display = '';
+        photoProgBar.style.width = '0%';
+
+        let done = 0, success = 0, failed = 0;
+        const total = imageFiles.length;
+        photoProgLbl.textContent = `0 / ${total}`;
+
+        for (const { file, relativePath } of imageFiles) {
+            const parts = relativePath.replace(/\\/g, '/').split('/');
+            // subfolder is the folder directly containing the file
+            const subfolder = parts.length > 1 ? parts[parts.length - 2] : '';
+            const pathParts = parts.slice(0, -1);
+            const reportNumber = extractReportNumber(pathParts);
+            const { section, description } = extractSectionFromFilename(file.name);
+
+            const formData = new FormData();
+            formData.append('photo', file, file.name);
+            formData.append('original_filename', file.name);
+            formData.append('subfolder', subfolder);
+            formData.append('report_number', reportNumber);
+            formData.append('section', section);
+            formData.append('description', description);
+
+            try {
+                const resp = await fetch("{% url 'import_photo' %}", {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': CSRF_TOKEN },
+                    body: formData,
+                });
+                const data = await resp.json();
+                if (data.status === 'ok') {
+                    success++;
+                    addListItem(photoFileList, '✔ ' + file.name, 'ok');
+                } else {
+                    failed++;
+                    addListItem(photoFileList, '✘ ' + file.name + ': ' + (data.message || 'error'), 'err');
+                }
+            } catch (err) {
+                failed++;
+                addListItem(photoFileList, '✘ ' + file.name + ': network error', 'err');
+            }
+
+            done++;
+            const pct = Math.round((done / total) * 100);
+            photoProgBar.style.width = pct + '%';
+            photoProgLbl.textContent = `${done} / ${total}`;
+        }
+
+        const cls = failed === 0 ? 'success' : 'danger';
+        photoResults.innerHTML = `
+            <div class="results-box ${cls}">
+                <strong>${success} photo${success !== 1 ? 's' : ''} imported successfully</strong>
+                ${failed ? `<br><span class="text-danger">${failed} failed — see list below</span>` : ''}
+            </div>`;
+    }
+
+    // -----------------------------------------------------------------------
+    // Excel weld import
+    // -----------------------------------------------------------------------
+    const excelZone    = document.getElementById('excel-drop-zone');
+    const excelInput   = document.getElementById('excel-input');
+    const excelProgWrap = document.getElementById('excel-progress-wrapper');
+    const excelProgBar  = document.getElementById('excel-progress-bar');
+    const excelProgLbl  = document.getElementById('excel-progress-label');
+    const excelResults  = document.getElementById('excel-results');
+    const excelFileList = document.getElementById('excel-file-list');
+
+    wireDragZone(excelZone, excelInput);
+
+    excelZone.addEventListener('drop', e => {
+        const xlsxFiles = Array.from(e.dataTransfer.files).filter(f => /\.xlsx$/i.test(f.name));
+        if (xlsxFiles.length) uploadExcelFiles(xlsxFiles);
+    });
+
+    excelInput.addEventListener('change', () => {
+        const xlsxFiles = Array.from(excelInput.files).filter(f => /\.xlsx$/i.test(f.name));
+        if (xlsxFiles.length) uploadExcelFiles(xlsxFiles);
+        excelInput.value = '';
+    });
+
+    async function uploadExcelFiles(files) {
+        excelResults.innerHTML = '';
+        excelFileList.innerHTML = '';
+        excelProgWrap.style.display = '';
+        excelProgBar.style.width = '0%';
+
+        let done = 0;
+        const total = files.length;
+        excelProgLbl.textContent = `0 / ${total}`;
+
+        let totalCreated = 0, totalUpdated = 0, totalSkipped = 0;
+        const allErrors = [];
+
+        for (const file of files) {
+            const formData = new FormData();
+            formData.append('file', file, file.name);
+
+            try {
+                const resp = await fetch("{% url 'import_welds_excel' %}", {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': CSRF_TOKEN },
+                    body: formData,
+                });
+                const data = await resp.json();
+                if (data.status === 'ok') {
+                    totalCreated += data.created || 0;
+                    totalUpdated += data.updated || 0;
+                    totalSkipped += data.skipped || 0;
+                    if (data.errors && data.errors.length) allErrors.push(...data.errors);
+                    addListItem(excelFileList,
+                        `✔ ${file.name} — ${data.created} created, ${data.updated} updated, ${data.skipped} skipped`, 'ok');
+                } else {
+                    allErrors.push(file.name + ': ' + (data.message || 'error'));
+                    addListItem(excelFileList, '✘ ' + file.name + ': ' + (data.message || 'error'), 'err');
+                }
+            } catch (err) {
+                allErrors.push(file.name + ': network error');
+                addListItem(excelFileList, '✘ ' + file.name + ': network error', 'err');
+            }
+
+            done++;
+            const pct = Math.round((done / total) * 100);
+            excelProgBar.style.width = pct + '%';
+            excelProgLbl.textContent = `${done} / ${total}`;
+        }
+
+        const cls = allErrors.length === 0 ? 'success' : 'danger';
+        excelResults.innerHTML = `
+            <div class="results-box ${cls}">
+                <strong>Import complete</strong><br>
+                Created: <strong>${totalCreated}</strong> &nbsp;
+                Updated: <strong>${totalUpdated}</strong> &nbsp;
+                Skipped: <strong>${totalSkipped}</strong>
+                ${allErrors.length ? `<br><span class="text-danger">${allErrors.length} error(s) — see list below</span>` : ''}
+            </div>`;
+    }
+
+    // -----------------------------------------------------------------------
+    // Utility
+    // -----------------------------------------------------------------------
+    function addListItem(ul, text, cls) {
+        const li = document.createElement('li');
+        li.textContent = text;
+        if (cls) li.classList.add(cls);
+        ul.appendChild(li);
+    }
+
+})();
+</script>
+{% endblock %}

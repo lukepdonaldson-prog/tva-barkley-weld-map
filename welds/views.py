@@ -1,11 +1,25 @@
+import json
 from datetime import date
 
 from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
 from django.shortcuts import render, get_object_or_404
+from django.views.decorators.http import require_POST
 from django.core.paginator import Paginator
 from django.db.models import Sum, Count, Q
 from welds.models import Weld
 from welds.export_utils import generate_excel_response, generate_pdf_response
+
+# Fields that may be edited via the inline-edit API
+_WELD_EDITABLE_FIELDS = {
+    'report', 'side', 'section', 'weld_id', 'weld_id2', 'weld_id3', 'weld_id4',
+    'estimated_repair_length', 'total_weld_length',
+    'table_6_1_criteria_1', 'table_6_1_criteria_2', 'table_6_1_criteria_3',
+    'weld_type', 'weld_size', 'wps_number',
+    'inspection_utsw', 'inspection_mt', 'inspector', 'date',
+    'pass_fail', 'corrective_action_taken', 'repair_welder',
+    'repair_inspection_date', 'weld_process', 'note',
+}
 
 
 def _apply_weld_filters(request):
@@ -140,3 +154,34 @@ def export_welds_pdf(request):
         title="TVA Barkley Dam \u2014 Weld Inspection Report",
         filters_desc=filters_desc,
     )
+
+
+@login_required
+@require_POST
+def weld_update(request, pk):
+    """AJAX endpoint: update editable fields on a Weld record."""
+    weld = get_object_or_404(Weld, pk=pk)
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+
+    for field, value in data.items():
+        if field not in _WELD_EDITABLE_FIELDS:
+            return JsonResponse(
+                {'success': False, 'error': f'Field "{field}" is not editable'},
+                status=400,
+            )
+        field_meta = Weld._meta.get_field(field)
+        # Convert empty string to None for nullable fields
+        if value == '' and getattr(field_meta, 'null', False):
+            value = None
+        setattr(weld, field, value)
+
+    try:
+        weld.full_clean()
+        weld.save()
+    except Exception as exc:
+        return JsonResponse({'success': False, 'error': str(exc)}, status=400)
+
+    return JsonResponse({'success': True})

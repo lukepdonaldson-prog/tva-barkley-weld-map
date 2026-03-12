@@ -3,6 +3,7 @@ from . import views
 
 urlpatterns = [
     path('', views.photo_gallery, name='photo_gallery'),
+    path('photo/<int:pk>/update/', views.photo_update, name='photo_update'),
     path('export/excel/', views.export_photos_excel, name='export_photos_excel'),
     path('export/zip/', views.export_photos_zip, name='export_photos_zip'),
     path('qa-dashboard/', views.qa_dashboard, name='qa_dashboard'),

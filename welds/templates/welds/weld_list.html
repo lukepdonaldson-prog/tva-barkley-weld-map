@@ -10,6 +10,40 @@
         color: var(--color-primary);
         margin-bottom: 1.25rem;
     }
+    /* Inline edit inputs */
+    .edit-input {
+        width: 100%;
+        min-width: 80px;
+        padding: 0.15rem 0.35rem;
+        font-size: 0.85rem;
+        border: 1px solid var(--color-accent);
+        border-radius: 0.25rem;
+        background: #fff;
+    }
+    .edit-input:focus {
+        outline: 2px solid var(--color-accent);
+        outline-offset: 1px;
+    }
+    tr.editing td { background: #f0f7ff; }
+    .row-actions { white-space: nowrap; }
+    /* Toast notification */
+    #inline-toast {
+        position: fixed;
+        bottom: 1.5rem;
+        right: 1.5rem;
+        z-index: 9999;
+        min-width: 220px;
+        display: none;
+        padding: 0.75rem 1.1rem;
+        border-radius: 0.4rem;
+        font-size: 0.9rem;
+        font-weight: 600;
+        box-shadow: 0 4px 18px rgba(0,0,0,0.18);
+        color: #fff;
+    }
+    #inline-toast.show { display: block; }
+    #inline-toast.success { background: var(--color-success); }
+    #inline-toast.error { background: var(--color-danger); }
 </style>
 {% endblock %}
 
@@ -143,17 +177,19 @@
                         <th>Report</th>
                         <th>Date</th>
                         <th>Repair Welder</th>
+                        <th></th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for weld in welds %}
-                    <tr class="{% if weld.pass_fail == 'Fail' %}row-fail{% endif %}">
-                        <td><a href="{% url 'weld_detail' weld.pk %}" class="section-link">{{ weld.section }}</a></td>
-                        <td>{{ weld.weld_id4 }}</td>
-                        <td>{{ weld.side }}</td>
-                        <td>{{ weld.weld_type }}</td>
-                        <td>{{ weld.weld_size }}</td>
-                        <td>
+                    <tr class="{% if weld.pass_fail == 'Fail' %}row-fail{% endif %}" data-pk="{{ weld.pk }}">
+                        <!-- Display cells -->
+                        <td class="d-cell"><a href="{% url 'weld_detail' weld.pk %}" class="section-link">{{ weld.section }}</a></td>
+                        <td class="d-cell">{{ weld.weld_id4 }}</td>
+                        <td class="d-cell">{{ weld.side }}</td>
+                        <td class="d-cell">{{ weld.weld_type }}</td>
+                        <td class="d-cell">{{ weld.weld_size }}</td>
+                        <td class="d-cell">
                             {% if weld.pass_fail == "Pass" %}
                                 <span class="badge-pass">✓ Pass</span>
                             {% elif weld.pass_fail == "Fail" %}
@@ -162,13 +198,39 @@
                                 <span class="text-muted">{{ weld.pass_fail }}</span>
                             {% endif %}
                         </td>
-                        <td>{{ weld.report }}</td>
-                        <td>{{ weld.date }}</td>
-                        <td>{{ weld.repair_welder }}</td>
+                        <td class="d-cell">{{ weld.report }}</td>
+                        <td class="d-cell">{{ weld.date }}</td>
+                        <td class="d-cell">{{ weld.repair_welder }}</td>
+                        <!-- Edit button -->
+                        <td class="row-actions d-cell">
+                            <button class="btn btn-outline-primary btn-sm py-0 px-1" title="Edit row" onclick="startEdit(this)">✏️</button>
+                        </td>
+
+                        <!-- Edit cells (hidden by default) -->
+                        <td class="e-cell" style="display:none;"><input class="edit-input" name="section" value="{{ weld.section }}"></td>
+                        <td class="e-cell" style="display:none;"><input class="edit-input" name="weld_id4" value="{{ weld.weld_id4 }}"></td>
+                        <td class="e-cell" style="display:none;"><input class="edit-input" name="side" value="{{ weld.side }}"></td>
+                        <td class="e-cell" style="display:none;"><input class="edit-input" name="weld_type" value="{{ weld.weld_type }}"></td>
+                        <td class="e-cell" style="display:none;"><input class="edit-input" name="weld_size" value="{{ weld.weld_size }}"></td>
+                        <td class="e-cell" style="display:none;">
+                            <select class="edit-input" name="pass_fail">
+                                <option value="" {% if not weld.pass_fail %}selected{% endif %}></option>
+                                <option value="Pass" {% if weld.pass_fail == "Pass" %}selected{% endif %}>Pass</option>
+                                <option value="Fail" {% if weld.pass_fail == "Fail" %}selected{% endif %}>Fail</option>
+                            </select>
+                        </td>
+                        <td class="e-cell" style="display:none;"><input class="edit-input" name="report" type="number" value="{{ weld.report }}"></td>
+                        <td class="e-cell" style="display:none;"><input class="edit-input" name="date" type="date" value="{{ weld.date|date:'Y-m-d' }}"></td>
+                        <td class="e-cell" style="display:none;"><input class="edit-input" name="repair_welder" value="{{ weld.repair_welder }}"></td>
+                        <!-- Save / Cancel -->
+                        <td class="e-cell row-actions" style="display:none;">
+                            <button class="btn btn-success btn-sm py-0 px-1 me-1" title="Save" onclick="saveRow(this)">💾</button>
+                            <button class="btn btn-outline-secondary btn-sm py-0 px-1" title="Cancel" onclick="cancelEdit(this)">✕</button>
+                        </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="9" class="text-center text-muted py-4">No welds found matching your filters.</td>
+                        <td colspan="10" class="text-center text-muted py-4">No welds found matching your filters.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -206,4 +268,101 @@
 </nav>
 {% endif %}
 
+<!-- Toast notification -->
+<div id="inline-toast" role="alert" aria-live="polite"></div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    'use strict';
+
+    function getCsrf() {
+        const m = document.cookie.match(/csrftoken=([^;]+)/);
+        return m ? m[1] : '';
+    }
+
+    function showToast(msg, type) {
+        const t = document.getElementById('inline-toast');
+        t.textContent = msg;
+        t.className = 'show ' + type;
+        clearTimeout(t._timer);
+        t._timer = setTimeout(() => { t.className = ''; }, 3000);
+    }
+
+    window.startEdit = function (btn) {
+        const row = btn.closest('tr');
+        row.querySelectorAll('.d-cell').forEach(c => c.style.display = 'none');
+        row.querySelectorAll('.e-cell').forEach(c => c.style.display = '');
+        row.classList.add('editing');
+    };
+
+    window.cancelEdit = function (btn) {
+        const row = btn.closest('tr');
+        row.querySelectorAll('.d-cell').forEach(c => c.style.display = '');
+        row.querySelectorAll('.e-cell').forEach(c => c.style.display = 'none');
+        row.classList.remove('editing');
+    };
+
+    window.saveRow = function (btn) {
+        const row = btn.closest('tr');
+        const pk = row.dataset.pk;
+        const payload = {};
+        row.querySelectorAll('.e-cell input, .e-cell select').forEach(inp => {
+            if (inp.name) payload[inp.name] = inp.value;
+        });
+
+        fetch('/welds/weld/' + pk + '/update/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrf(),
+            },
+            body: JSON.stringify(payload),
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                // Update display cells with new values
+                const dCells = row.querySelectorAll('.d-cell');
+                // 0=section link, 1=weld_id4, 2=side, 3=weld_type, 4=weld_size,
+                // 5=status badge, 6=report, 7=date, 8=repair_welder, 9=edit btn
+                const inputs = Array.from(row.querySelectorAll('.e-cell input, .e-cell select'));
+                const fieldMap = {};
+                inputs.forEach(i => { if (i.name) fieldMap[i.name] = i.value; });
+
+                // section link
+                const sectionLink = dCells[0].querySelector('a');
+                if (sectionLink) sectionLink.textContent = fieldMap['section'] || '';
+                dCells[1].textContent = fieldMap['weld_id4'] || '';
+                dCells[2].textContent = fieldMap['side'] || '';
+                dCells[3].textContent = fieldMap['weld_type'] || '';
+                dCells[4].textContent = fieldMap['weld_size'] || '';
+                // Status badge
+                const pf = fieldMap['pass_fail'] || '';
+                if (pf === 'Pass') {
+                    dCells[5].innerHTML = '<span class="badge-pass">✓ Pass</span>';
+                    row.classList.remove('row-fail');
+                } else if (pf === 'Fail') {
+                    dCells[5].innerHTML = '<span class="badge-fail">✗ Fail</span>';
+                    row.classList.add('row-fail');
+                } else {
+                    dCells[5].innerHTML = '<span class="text-muted">' + pf + '</span>';
+                    row.classList.remove('row-fail');
+                }
+                dCells[6].textContent = fieldMap['report'] || '';
+                dCells[7].textContent = fieldMap['date'] || '';
+                dCells[8].textContent = fieldMap['repair_welder'] || '';
+
+                cancelEdit(btn);
+                showToast('✓ Saved successfully', 'success');
+            } else {
+                showToast('✗ ' + (data.error || 'Save failed'), 'error');
+            }
+        })
+        .catch(() => showToast('✗ Network error', 'error'));
+    };
+}());
+</script>
 {% endblock %}

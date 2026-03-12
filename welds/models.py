@@ -50,3 +50,16 @@ class WeldPhoto(models.Model):
 
     def __str__(self):
         return self.original_filename
+
+
+class WeldIdKey(models.Model):
+    """Lookup table mapping Weld ID4 abbreviation codes to their full meanings."""
+    code = models.CharField(max_length=10, unique=True)
+    meaning = models.CharField(max_length=100)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['code']
+
+    def __str__(self):
+        return f"{self.code} — {self.meaning}"

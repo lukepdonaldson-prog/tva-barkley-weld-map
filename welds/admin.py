@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import Weld, WeldPhoto
+from .models import Weld, WeldPhoto, WeldIdKey
 
 
 @admin.register(Weld)
@@ -29,3 +29,10 @@ class WeldPhotoAdmin(admin.ModelAdmin):
             return format_html('<img src="{}" style="max-height:500px;" />', obj.photo.url)
         return "No photo"
     photo_preview_large.short_description = 'Photo'
+
+
+@admin.register(WeldIdKey)
+class WeldIdKeyAdmin(admin.ModelAdmin):
+    list_display = ('code', 'meaning', 'created_at')
+    search_fields = ('code', 'meaning')
+    ordering = ('code',)

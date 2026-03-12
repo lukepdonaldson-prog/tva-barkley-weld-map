@@ -1,4 +1,5 @@
 import json
+import re
 from datetime import date
 
 from django.contrib.auth.decorators import login_required
@@ -7,7 +8,7 @@ from django.shortcuts import render, get_object_or_404
 from django.views.decorators.http import require_POST
 from django.core.paginator import Paginator
 from django.db.models import Sum, Count, Q
-from welds.models import Weld
+from welds.models import Weld, WeldIdKey
 from welds.export_utils import generate_excel_response, generate_pdf_response
 
 # Fields that may be edited via the inline-edit API
@@ -127,10 +128,14 @@ def weld_detail(request, pk):
     previous_weld = Weld.objects.filter(pk__lt=pk).order_by('-pk').first()
     next_weld = Weld.objects.filter(pk__gt=pk).order_by('pk').first()
 
+    # Decode Weld ID4 segments against WeldIdKey lookup table
+    weld_id4_decoded = _decode_weld_id4(weld.weld_id4)
+
     context = {
         'weld': weld,
         'previous_weld': previous_weld,
         'next_weld': next_weld,
+        'weld_id4_decoded': weld_id4_decoded,
     }
 
     return render(request, 'welds/weld_detail.html', context)
@@ -184,4 +189,96 @@ def weld_update(request, pk):
     except Exception as exc:
         return JsonResponse({'success': False, 'error': str(exc)}, status=400)
 
+    return JsonResponse({'success': True})
+
+
+# ---------------------------------------------------------------------------
+# Weld ID Key helper
+# ---------------------------------------------------------------------------
+
+def _decode_weld_id4(weld_id4):
+    """
+    Split the weld_id4 string on hyphens, underscores, or spaces and
+    look up each segment in the WeldIdKey table.
+    Returns a list of (segment, meaning_or_None) tuples.
+    """
+    if not weld_id4:
+        return []
+    segments = [s for s in re.split(r'[-_ ]+', weld_id4) if s]
+    if not segments:
+        return []
+    key_map = {k.code: k.meaning for k in WeldIdKey.objects.filter(code__in=segments)}
+    return [(seg, key_map.get(seg)) for seg in segments]
+
+
+# ---------------------------------------------------------------------------
+# Weld ID Key views
+# ---------------------------------------------------------------------------
+
+@login_required
+def weld_id_key(request):
+    """Display and manage Weld ID Key entries."""
+    entries = WeldIdKey.objects.all()
+    return render(request, 'welds/weld_id_key.html', {'entries': entries})
+
+
+@login_required
+@require_POST
+def weld_id_key_create(request):
+    """AJAX: create a new WeldIdKey entry."""
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+
+    code = data.get('code', '').strip()
+    meaning = data.get('meaning', '').strip()
+    if not code or not meaning:
+        return JsonResponse({'success': False, 'error': 'Both code and meaning are required.'}, status=400)
+    if len(code) > 10:
+        return JsonResponse({'success': False, 'error': 'Code must be 10 characters or fewer.'}, status=400)
+    if len(meaning) > 100:
+        return JsonResponse({'success': False, 'error': 'Meaning must be 100 characters or fewer.'}, status=400)
+
+    if WeldIdKey.objects.filter(code=code).exists():
+        return JsonResponse({'success': False, 'error': f'Code "{code}" already exists.'}, status=400)
+
+    entry = WeldIdKey.objects.create(code=code, meaning=meaning)
+    return JsonResponse({'success': True, 'id': entry.pk, 'code': entry.code, 'meaning': entry.meaning})
+
+
+@login_required
+@require_POST
+def weld_id_key_update(request, pk):
+    """AJAX: update an existing WeldIdKey entry."""
+    entry = get_object_or_404(WeldIdKey, pk=pk)
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+
+    code = data.get('code', '').strip()
+    meaning = data.get('meaning', '').strip()
+    if not code or not meaning:
+        return JsonResponse({'success': False, 'error': 'Both code and meaning are required.'}, status=400)
+    if len(code) > 10:
+        return JsonResponse({'success': False, 'error': 'Code must be 10 characters or fewer.'}, status=400)
+    if len(meaning) > 100:
+        return JsonResponse({'success': False, 'error': 'Meaning must be 100 characters or fewer.'}, status=400)
+
+    if WeldIdKey.objects.filter(code=code).exclude(pk=pk).exists():
+        return JsonResponse({'success': False, 'error': f'Code "{code}" already exists.'}, status=400)
+
+    entry.code = code
+    entry.meaning = meaning
+    entry.save()
+    return JsonResponse({'success': True, 'id': entry.pk, 'code': entry.code, 'meaning': entry.meaning})
+
+
+@login_required
+@require_POST
+def weld_id_key_delete(request, pk):
+    """AJAX: delete a WeldIdKey entry."""
+    entry = get_object_or_404(WeldIdKey, pk=pk)
+    entry.delete()
     return JsonResponse({'success': True})

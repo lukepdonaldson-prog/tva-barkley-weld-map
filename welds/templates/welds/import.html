@@ -197,7 +197,11 @@
 
     function extractReportNumber(pathParts) {
         for (const part of pathParts) {
+            // Match plain number folders like "29" or "29A"
             if (/^\d+[A-Za-z]?$/.test(part)) return part;
+            // Match "Report 29" / "report 29A" style folder names (case-insensitive)
+            const m = part.match(/^report\s+(\d+[A-Za-z]?)$/i);
+            if (m) return m[1];
         }
         return '';
     }
@@ -300,7 +304,7 @@
         photoProgWrap.style.display = '';
         photoProgBar.style.width = '0%';
 
-        let done = 0, success = 0, failed = 0;
+        let done = 0, success = 0, replaced = 0, failed = 0;
         const total = imageFiles.length;
         photoProgLbl.textContent = `0 / ${total}`;
 
@@ -328,8 +332,13 @@
                 });
                 const data = await resp.json();
                 if (data.status === 'ok') {
-                    success++;
-                    addListItem(photoFileList, '✔ ' + file.name, 'ok');
+                    if (data.replaced) {
+                        replaced++;
+                        addListItem(photoFileList, '✔ ' + file.name + ' (replaced)', 'ok');
+                    } else {
+                        success++;
+                        addListItem(photoFileList, '✔ ' + file.name, 'ok');
+                    }
                 } else {
                     failed++;
                     addListItem(photoFileList, '✘ ' + file.name + ': ' + (data.message || 'error'), 'err');
@@ -345,10 +354,17 @@
             photoProgLbl.textContent = `${done} / ${total}`;
         }
 
+        const totalOk = success + replaced;
         const cls = failed === 0 ? 'success' : 'danger';
+        let detail = '';
+        if (replaced > 0 && success > 0) {
+            detail = ` (${success} new, ${replaced} replaced)`;
+        } else if (replaced > 0) {
+            detail = ` (${replaced} replaced)`;
+        }
         photoResults.innerHTML = `
             <div class="results-box ${cls}">
-                <strong>${success} photo${success !== 1 ? 's' : ''} imported successfully</strong>
+                <strong>${totalOk} photo${totalOk !== 1 ? 's' : ''} imported successfully${detail}</strong>
                 ${failed ? `<br><span class="text-danger">${failed} failed — see list below</span>` : ''}
             </div>`;
     }

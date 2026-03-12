@@ -135,6 +135,13 @@ def import_photo(request):
         if not description:
             description = derived_desc
 
+    # If report_number not provided by client, try to extract from subfolder
+    # e.g. subfolder "Report 29" → "29"
+    if not report_number and subfolder:
+        m = re.match(r'^report\s+(\d+[A-Za-z]?)$', subfolder, re.IGNORECASE)
+        if m:
+            report_number = m.group(1)
+
     # If still no section, try from subfolder
     if not section and subfolder:
         match = re.match(r'^([A-Za-z]{1,3}[-.]?\d+(?:\.\d+)?)', subfolder)
@@ -143,16 +150,33 @@ def import_photo(request):
 
     safe_filename = _shorten_filename(original_filename)
 
-    weld_photo = WeldPhoto(
-        section=section,
-        report_number=report_number,
-        subfolder=subfolder,
-        description=description,
+    # Detect duplicate: same original_filename + report_number → replace
+    existing = WeldPhoto.objects.filter(
         original_filename=original_filename[:500],
-    )
-    weld_photo.photo.save(safe_filename, ContentFile(photo_file.read()), save=True)
+        report_number=report_number,
+    ).first()
 
-    return JsonResponse({'status': 'ok', 'id': weld_photo.pk})
+    if existing:
+        existing.section = section
+        existing.subfolder = subfolder
+        existing.description = description
+        if existing.photo:
+            existing.photo.delete(save=False)
+        existing.photo.save(safe_filename, ContentFile(photo_file.read()), save=True)
+        weld_photo = existing
+        replaced = True
+    else:
+        weld_photo = WeldPhoto(
+            section=section,
+            report_number=report_number,
+            subfolder=subfolder,
+            description=description,
+            original_filename=original_filename[:500],
+        )
+        weld_photo.photo.save(safe_filename, ContentFile(photo_file.read()), save=True)
+        replaced = False
+
+    return JsonResponse({'status': 'ok', 'id': weld_photo.pk, 'replaced': replaced})
 
 
 # ---------------------------------------------------------------------------

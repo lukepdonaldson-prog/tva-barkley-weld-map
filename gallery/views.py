@@ -81,6 +81,14 @@ def qa_dashboard(request):
     pass_count = welds.filter(pass_fail__iexact='pass').count()
     fail_count = welds.filter(pass_fail__iexact='fail').count()
 
+    # Count of incomplete welds (missing critical fields, not cleared) matching current filters
+    from django.db.models import Q as _Q
+    _incomplete_q = (
+        _Q(inspector='') | _Q(date__isnull=True) | _Q(pass_fail='') |
+        _Q(weld_type='') | _Q(total_weld_length__isnull=True)
+    )
+    incomplete_count = welds.filter(validation_cleared=False).filter(_incomplete_q).count()
+
     paginator = Paginator(welds, 50)
     page_number = request.GET.get('page')
     welds_page = paginator.get_page(page_number)
@@ -96,6 +104,7 @@ def qa_dashboard(request):
         'count_filtered': count_filtered,
         'pass_count': pass_count,
         'fail_count': fail_count,
+        'incomplete_count': incomplete_count,
         'sections': sections,
         'reports': reports,
         'statuses': statuses,

@@ -28,6 +28,8 @@ class Weld(models.Model):
     repair_inspection_date = models.DateField(null=True, blank=True)
     weld_process = models.CharField(max_length=100, blank=True)
     note = models.TextField(blank=True)
+    validation_note = models.TextField(blank=True, default='')
+    validation_cleared = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -36,6 +38,28 @@ class Weld(models.Model):
 
     def __str__(self):
         return f"{self.section} - {self.weld_id4}"
+
+    def get_missing_fields(self):
+        """Return a list of human-readable names for missing critical fields."""
+        if self.validation_cleared:
+            return []
+        missing = []
+        if not self.inspector:
+            missing.append('Inspector')
+        if self.date is None:
+            missing.append('Date')
+        if not self.pass_fail:
+            missing.append('Pass/Fail')
+        if not self.weld_type:
+            missing.append('Weld Type')
+        if self.total_weld_length is None:
+            missing.append('Total Weld Length')
+        return missing
+
+    @property
+    def is_incomplete(self):
+        """True if this weld has at least one missing critical field and has not been cleared."""
+        return bool(self.get_missing_fields())
 
 
 class WeldPhoto(models.Model):

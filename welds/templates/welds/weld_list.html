@@ -185,7 +185,12 @@
                     <tr class="{% if weld.pass_fail == 'Fail' %}row-fail{% endif %}" data-pk="{{ weld.pk }}">
                         <!-- Display cells -->
                         <td class="d-cell"><a href="{% url 'weld_detail' weld.pk %}" class="section-link">{{ weld.section }}</a></td>
-                        <td class="d-cell">{{ weld.weld_id4 }}</td>
+                        <td class="d-cell">
+                            {{ weld.weld_id4 }}
+                            {% if weld.is_incomplete %}
+                            <span title="Missing: {% for f in weld.get_missing_fields %}{{ f }}{% if not forloop.last %}, {% endif %}{% endfor %}" style="cursor:help; margin-left:0.3em;">⚠️</span>
+                            {% endif %}
+                        </td>
                         <td class="d-cell">{{ weld.side }}</td>
                         <td class="d-cell">{{ weld.weld_type }}</td>
                         <td class="d-cell">{{ weld.weld_size }}</td>

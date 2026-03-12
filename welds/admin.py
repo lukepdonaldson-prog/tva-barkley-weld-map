@@ -5,9 +5,9 @@ from .models import Weld, WeldPhoto, WeldIdKey
 
 @admin.register(Weld)
 class WeldAdmin(admin.ModelAdmin):
-    list_display = ('section', 'weld_id4', 'side', 'weld_type', 'pass_fail', 'report', 'date')
-    list_filter = ('side', 'pass_fail', 'weld_type', 'report')
-    search_fields = ('section', 'weld_id', 'inspector')
+    list_display = ('section', 'weld_id4', 'side', 'weld_type', 'pass_fail', 'report', 'date', 'validation_cleared')
+    list_filter = ('side', 'pass_fail', 'weld_type', 'report', 'validation_cleared')
+    search_fields = ('section', 'weld_id', 'inspector', 'validation_note')
 
 
 @admin.register(WeldPhoto)

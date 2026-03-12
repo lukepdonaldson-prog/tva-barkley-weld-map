@@ -149,6 +149,21 @@
                 <div class="detail-field"><strong>Weld ID2</strong> <span class="editable-span" data-field="weld_id2">{{ weld.weld_id2 }}</span></div>
                 <div class="detail-field"><strong>Weld ID3</strong> <span class="editable-span" data-field="weld_id3">{{ weld.weld_id3 }}</span></div>
                 <div class="detail-field"><strong>Weld ID4</strong> <span class="editable-span" data-field="weld_id4">{{ weld.weld_id4 }}</span></div>
+                {% if weld_id4_decoded %}
+                <div class="detail-field">
+                    <strong>ID4 Decoded</strong>
+                    <span style="font-size:0.88rem; color:var(--color-text-muted);">
+                        {% for segment, meaning in weld_id4_decoded %}
+                            {% if not forloop.first %} <span style="color:#adb5bd;">·</span> {% endif %}
+                            {% if meaning %}
+                                <abbr title="{{ meaning }}" style="text-decoration:underline dotted; cursor:help;">{{ segment }}</abbr> <em style="font-size:0.82rem;">({{ meaning }})</em>
+                            {% else %}
+                                {{ segment }}
+                            {% endif %}
+                        {% endfor %}
+                    </span>
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>

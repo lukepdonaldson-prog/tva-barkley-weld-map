@@ -198,6 +198,9 @@ def import_welds_excel(request):
             status=400,
         )
 
+    # Import mode: "replace_all" deletes all existing welds first; "update_add" (default) only updates/adds
+    mode = request.POST.get('mode', 'update_add')
+
     try:
         import openpyxl
         wb = openpyxl.load_workbook(excel_file, read_only=True, data_only=True)
@@ -228,6 +231,11 @@ def import_welds_excel(request):
             return default
         val = row[idx] if idx < len(row) else default
         return val
+
+    # If Replace All mode, delete all existing weld records first
+    deleted_count = 0
+    if mode == 'replace_all':
+        deleted_count, _ = Weld.objects.all().delete()
 
     created_count = 0
     updated_count = 0
@@ -288,6 +296,7 @@ def import_welds_excel(request):
         'status': 'ok',
         'created': created_count,
         'updated': updated_count,
+        'deleted': deleted_count,
         'skipped': skipped_count,
         'errors': errors,
     })

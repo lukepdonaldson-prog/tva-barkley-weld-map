@@ -121,8 +121,27 @@
         <div class="card h-100 p-4">
             <h5 class="fw-bold mb-1">📊 Excel Weld Report Import</h5>
             <p class="text-muted mb-3" style="font-size:0.88rem;">
-                Drag one or more <code>.xlsx</code> weld report files. Records will be created or updated using Section + Weld ID4 as the unique key.
+                Drag one or more <code>.xlsx</code> weld report files. Choose import mode below.
             </p>
+
+            <!-- Import mode selector -->
+            <div class="mb-3">
+                <label class="form-label fw-semibold" style="font-size:0.88rem;">Import Mode</label>
+                <div class="d-flex gap-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="excel-import-mode" id="mode-update-add" value="update_add" checked>
+                        <label class="form-check-label" for="mode-update-add" style="font-size:0.88rem;">
+                            <strong>Update / Add</strong> — Updates existing welds &amp; adds new ones
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="excel-import-mode" id="mode-replace-all" value="replace_all">
+                        <label class="form-check-label text-danger" for="mode-replace-all" style="font-size:0.88rem;">
+                            <strong>Replace All</strong> — Deletes ALL existing welds, then imports fresh
+                        </label>
+                    </div>
+                </div>
+            </div>
 
             <div class="drop-zone" id="excel-drop-zone">
                 <span class="dz-icon">📑</span>
@@ -146,6 +165,26 @@
         </div>
     </div>
 
+</div>
+
+<!-- Replace All confirmation modal -->
+<div class="modal fade" id="replaceAllModal" tabindex="-1" aria-labelledby="replaceAllModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="replaceAllModalLabel">⚠️ Replace All Welds?</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p><strong>This will permanently delete ALL existing weld records</strong> and replace them with the contents of the uploaded file.</p>
+                <p class="mb-0 text-muted" style="font-size:0.9rem;">This action cannot be undone. Are you sure you want to continue?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirm-replace-all">Delete All &amp; Import</button>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}
 
@@ -382,6 +421,39 @@
 
     wireDragZone(excelZone, excelInput);
 
+    function getSelectedMode() {
+        const checked = document.querySelector('input[name="excel-import-mode"]:checked');
+        return checked ? checked.value : 'update_add';
+    }
+
+    let pendingExcelFiles = null;
+
+    // "Confirm replace all" button handler
+    document.getElementById('confirm-replace-all').addEventListener('click', function () {
+        const modal = bootstrap.Modal.getInstance(document.getElementById('replaceAllModal'));
+        modal.hide();
+        if (pendingExcelFiles) {
+            doUploadExcelFiles(pendingExcelFiles, 'replace_all');
+            pendingExcelFiles = null;
+        }
+    });
+
+    // Cancel clears pending files
+    document.getElementById('replaceAllModal').addEventListener('hidden.bs.modal', function () {
+        pendingExcelFiles = null;
+    });
+
+    function uploadExcelFiles(files) {
+        const mode = getSelectedMode();
+        if (mode === 'replace_all') {
+            pendingExcelFiles = files;
+            const modal = new bootstrap.Modal(document.getElementById('replaceAllModal'));
+            modal.show();
+        } else {
+            doUploadExcelFiles(files, 'update_add');
+        }
+    }
+
     excelZone.addEventListener('drop', e => {
         const xlsxFiles = Array.from(e.dataTransfer.files).filter(f => /\.xlsx$/i.test(f.name));
         if (xlsxFiles.length) uploadExcelFiles(xlsxFiles);
@@ -393,7 +465,7 @@
         excelInput.value = '';
     });
 
-    async function uploadExcelFiles(files) {
+    async function doUploadExcelFiles(files, mode) {
         excelResults.innerHTML = '';
         excelFileList.innerHTML = '';
         excelProgWrap.style.display = '';
@@ -403,12 +475,13 @@
         const total = files.length;
         excelProgLbl.textContent = `0 / ${total}`;
 
-        let totalCreated = 0, totalUpdated = 0, totalSkipped = 0;
+        let totalCreated = 0, totalUpdated = 0, totalSkipped = 0, totalDeleted = 0;
         const allErrors = [];
 
         for (const file of files) {
             const formData = new FormData();
             formData.append('file', file, file.name);
+            formData.append('mode', mode);
 
             try {
                 const resp = await fetch("{% url 'import_welds_excel' %}", {
@@ -421,9 +494,11 @@
                     totalCreated += data.created || 0;
                     totalUpdated += data.updated || 0;
                     totalSkipped += data.skipped || 0;
+                    totalDeleted += data.deleted || 0;
                     if (data.errors && data.errors.length) allErrors.push(...data.errors);
+                    const deletedNote = data.deleted ? `, ${data.deleted} deleted` : '';
                     addListItem(excelFileList,
-                        `✔ ${file.name} — ${data.created} created, ${data.updated} updated, ${data.skipped} skipped`, 'ok');
+                        `✔ ${file.name} — ${data.created} created, ${data.updated} updated, ${data.skipped} skipped${deletedNote}`, 'ok');
                 } else {
                     allErrors.push(file.name + ': ' + (data.message || 'error'));
                     addListItem(excelFileList, '✘ ' + file.name + ': ' + (data.message || 'error'), 'err');
@@ -440,12 +515,14 @@
         }
 
         const cls = allErrors.length === 0 ? 'success' : 'danger';
+        const deletedLine = totalDeleted > 0 ? `<br>Deleted (replaced): <strong>${totalDeleted}</strong>` : '';
         excelResults.innerHTML = `
             <div class="results-box ${cls}">
                 <strong>Import complete</strong><br>
                 Created: <strong>${totalCreated}</strong> &nbsp;
                 Updated: <strong>${totalUpdated}</strong> &nbsp;
                 Skipped: <strong>${totalSkipped}</strong>
+                ${deletedLine}
                 ${allErrors.length ? `<br><span class="text-danger">${allErrors.length} error(s) — see list below</span>` : ''}
             </div>`;
     }

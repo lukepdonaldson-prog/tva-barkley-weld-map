@@ -1,0 +1,10 @@
+<a href="{% url 'weld_list' %}?section={{ tile.section|urlencode }}"
+   class="section-tile tile-{{ tile.status }}"
+   title="{{ tile.section }} — {{ tile.status_label }}&#10;Pass: {{ tile.pass_count }}&#10;Fail (unrepaired): {{ tile.fail_unrepaired }}&#10;Repaired: {{ tile.fail_repaired }}&#10;Incomplete: {{ tile.incomplete_count }}&#10;Not inspected: {{ tile.not_inspected_count }}&#10;Total: {{ tile.total }}">
+    <span class="tile-badge">{{ tile.status_label }}</span>
+    <div class="tile-section-name">{{ tile.section }}</div>
+    {% if tile.stats_summary %}
+    <div class="tile-stats">{{ tile.stats_summary }}</div>
+    {% endif %}
+    <div class="tile-total">{{ tile.total }} weld{{ tile.total|pluralize }}</div>
+</a>

@@ -9,7 +9,7 @@ from django.shortcuts import render, get_object_or_404
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 from django.core.paginator import Paginator
-from django.db.models import Sum, Count, Q
+from django.db.models import Sum, Count, Q, Max
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment
 from welds.models import Weld, WeldIdKey
@@ -495,3 +495,113 @@ def weld_bulk_clear_all_filtered(request):
     queryset = _apply_incomplete_filters(section, report, missing_field, search)
     count = queryset.update(validation_note=note, validation_cleared=True, updated_at=timezone.now())
     return JsonResponse({'success': True, 'count': count})
+
+
+# ---------------------------------------------------------------------------
+# Section Map view
+# ---------------------------------------------------------------------------
+
+def _build_section_stats(pass_count, fail_repaired, fail_unrepaired, incomplete_count):
+    """Return a human-readable stats string for a section tile, e.g. '45 Pass · 3 Repaired · 1 Fail · 2 Incomplete'."""
+    parts = []
+    if pass_count:
+        parts.append(f'{pass_count} Pass')
+    if fail_repaired:
+        parts.append(f'{fail_repaired} Repaired')
+    if fail_unrepaired:
+        parts.append(f'{fail_unrepaired} Fail')
+    if incomplete_count:
+        parts.append(f'{incomplete_count} Incomplete')
+    return ' · '.join(parts)
+
+
+@login_required
+def section_map(request):
+    """Section map showing color-coded tiles for each section based on inspection status."""
+    side_filter = request.GET.get('side', '')
+
+    qs = Weld.objects.all()
+    if side_filter:
+        qs = qs.filter(side=side_filter)
+
+    # Aggregate stats per section using a single DB query
+    sections_qs = qs.values('section').annotate(
+        side=Max('side'),
+        total=Count('id'),
+        pass_count=Count('id', filter=Q(pass_fail='Pass')),
+        fail_unrepaired=Count('id', filter=Q(pass_fail='Fail') & Q(repair_inspection_date__isnull=True)),
+        fail_repaired=Count('id', filter=Q(pass_fail='Fail') & Q(repair_inspection_date__isnull=False)),
+        incomplete_count=Count('id', filter=_INCOMPLETE_Q & Q(validation_cleared=False)),
+        not_inspected_count=Count('id', filter=Q(pass_fail='')),
+    ).order_by('section')
+
+    # Determine worst-case status for each tile
+    section_tiles = []
+    for s in sections_qs:
+        if s['fail_unrepaired'] > 0:
+            status = 'red'
+            status_label = 'Has Failures'
+        elif s['incomplete_count'] > 0:
+            status = 'amber'
+            status_label = 'Incomplete'
+        elif s['fail_repaired'] > 0:
+            status = 'blue'
+            status_label = 'All Repaired'
+        elif s['not_inspected_count'] == 0 and s['pass_count'] > 0:
+            status = 'green'
+            status_label = 'All Passed'
+        else:
+            status = 'gray'
+            status_label = 'Not Inspected'
+
+        section_tiles.append({
+            'section': s['section'],
+            'side': s['side'] or '',
+            'total': s['total'],
+            'pass_count': s['pass_count'],
+            'fail_unrepaired': s['fail_unrepaired'],
+            'fail_repaired': s['fail_repaired'],
+            'incomplete_count': s['incomplete_count'],
+            'not_inspected_count': s['not_inspected_count'],
+            'status': status,
+            'status_label': status_label,
+            'stats_summary': _build_section_stats(
+                s['pass_count'], s['fail_repaired'],
+                s['fail_unrepaired'], s['incomplete_count'],
+            ),
+        })
+
+    # Summary stats
+    total_sections = len(section_tiles)
+    all_passed = sum(1 for s in section_tiles if s['status'] == 'green')
+    has_failures = sum(1 for s in section_tiles if s['status'] == 'red')
+    all_repaired = sum(1 for s in section_tiles if s['status'] == 'blue')
+    has_incomplete = sum(1 for s in section_tiles if s['status'] == 'amber')
+    not_inspected_summary = sum(1 for s in section_tiles if s['status'] == 'gray')
+
+    # Distinct sides for the filter dropdown
+    all_sides = (
+        Weld.objects.exclude(side='')
+        .values_list('side', flat=True)
+        .order_by('side')
+        .distinct()
+    )
+
+    # Group tiles by side for optional side-grouped display
+    sides_groups = {}
+    for tile in section_tiles:
+        side = tile['side'] or 'Unknown'
+        sides_groups.setdefault(side, []).append(tile)
+
+    return render(request, 'welds/section_map.html', {
+        'section_tiles': section_tiles,
+        'sides_groups': sides_groups,
+        'total_sections': total_sections,
+        'all_passed': all_passed,
+        'has_failures': has_failures,
+        'all_repaired': all_repaired,
+        'has_incomplete': has_incomplete,
+        'not_inspected_summary': not_inspected_summary,
+        'all_sides': all_sides,
+        'selected_side': side_filter,
+    })

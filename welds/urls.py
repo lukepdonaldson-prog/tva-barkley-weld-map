@@ -3,6 +3,7 @@ from . import views
 
 urlpatterns = [
     path('', views.weld_list, name='weld_list'),
+    path('section-map/', views.section_map, name='section_map'),
     path('weld/<int:pk>/', views.weld_detail, name='weld_detail'),
     path('weld/<int:pk>/update/', views.weld_update, name='weld_update'),
     path('weld/<int:pk>/clear-validation/', views.weld_clear_validation, name='weld_clear_validation'),

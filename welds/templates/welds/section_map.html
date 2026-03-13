@@ -1,0 +1,225 @@
+{% extends 'welds/base.html' %}
+
+{% block title %}Section Map — TVA Barkley{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-heading {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--color-primary);
+        margin-bottom: 1.25rem;
+    }
+
+    /* Section tile grid */
+    .section-grid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 0.75rem;
+    }
+    @media (max-width: 1199px) {
+        .section-grid { grid-template-columns: repeat(4, 1fr); }
+    }
+    @media (max-width: 991px) {
+        .section-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (max-width: 575px) {
+        .section-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    /* Tile base */
+    .section-tile {
+        border-radius: var(--radius);
+        padding: 0.9rem 0.75rem;
+        text-decoration: none;
+        display: block;
+        transition: transform 0.15s, box-shadow 0.15s, filter 0.15s;
+        position: relative;
+        cursor: pointer;
+        color: #fff;
+        box-shadow: var(--shadow-sm);
+        min-height: 90px;
+    }
+    .section-tile:hover {
+        transform: translateY(-3px);
+        box-shadow: var(--shadow-lg);
+        filter: brightness(1.08);
+        color: #fff;
+    }
+    .section-tile .tile-section-name {
+        font-size: 0.95rem;
+        font-weight: 700;
+        line-height: 1.2;
+        margin-bottom: 0.35rem;
+        word-break: break-word;
+    }
+    .section-tile .tile-stats {
+        font-size: 0.72rem;
+        opacity: 0.92;
+        line-height: 1.4;
+    }
+    .section-tile .tile-total {
+        font-size: 0.68rem;
+        opacity: 0.75;
+        margin-top: 0.25rem;
+    }
+    .section-tile .tile-badge {
+        position: absolute;
+        top: 0.45rem;
+        right: 0.5rem;
+        font-size: 0.65rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        opacity: 0.85;
+        background: rgba(255,255,255,0.22);
+        padding: 0.15em 0.45em;
+        border-radius: 0.25rem;
+    }
+
+    /* Status colours */
+    .tile-red    { background-color: #c0392b; }
+    .tile-amber  { background-color: #d4720a; }
+    .tile-blue   { background-color: #2471a3; }
+    .tile-green  { background-color: #1e8449; }
+    .tile-gray   { background-color: #6c757d; }
+
+    /* Side group headings */
+    .side-heading {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--color-primary);
+        margin: 1.5rem 0 0.75rem;
+        padding-bottom: 0.35rem;
+        border-bottom: 2px solid var(--color-border);
+    }
+
+    /* Filter pill buttons */
+    .side-filter-btn {
+        border-radius: 2rem;
+        font-size: 0.85rem;
+        font-weight: 500;
+        padding: 0.3rem 1rem;
+        border: 1.5px solid var(--color-border);
+        background: #fff;
+        color: var(--color-text);
+        cursor: pointer;
+        transition: background 0.12s, color 0.12s, border-color 0.12s;
+        text-decoration: none;
+    }
+    .side-filter-btn:hover {
+        border-color: var(--color-accent);
+        color: var(--color-accent);
+    }
+    .side-filter-btn.active {
+        background: var(--color-accent);
+        border-color: var(--color-accent);
+        color: #fff;
+    }
+
+    /* Legend */
+    .legend-dot {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        margin-right: 4px;
+        vertical-align: middle;
+    }
+    .legend-red   { background: #c0392b; }
+    .legend-amber { background: #d4720a; }
+    .legend-blue  { background: #2471a3; }
+    .legend-green { background: #1e8449; }
+    .legend-gray  { background: #6c757d; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="page-heading mb-0">🗺️ Section Map</h1>
+    <small class="text-muted">Click a tile to view welds for that section</small>
+</div>
+
+<!-- Summary stat cards -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-sm-4 col-lg-2">
+        <div class="stat-card" style="background:var(--color-accent);">
+            <div class="stat-value">{{ total_sections }}</div>
+            <div class="stat-label">Total Sections</div>
+        </div>
+    </div>
+    <div class="col-6 col-sm-4 col-lg-2">
+        <div class="stat-card" style="background:#1e8449;">
+            <div class="stat-value">{{ all_passed }}</div>
+            <div class="stat-label">✅ All Passed</div>
+        </div>
+    </div>
+    <div class="col-6 col-sm-4 col-lg-2">
+        <div class="stat-card" style="background:#c0392b;">
+            <div class="stat-value">{{ has_failures }}</div>
+            <div class="stat-label">🔴 Has Failures</div>
+        </div>
+    </div>
+    <div class="col-6 col-sm-4 col-lg-2">
+        <div class="stat-card" style="background:#2471a3;">
+            <div class="stat-value">{{ all_repaired }}</div>
+            <div class="stat-label">🔵 All Repaired</div>
+        </div>
+    </div>
+    <div class="col-6 col-sm-4 col-lg-2">
+        <div class="stat-card" style="background:#d4720a;">
+            <div class="stat-value">{{ has_incomplete }}</div>
+            <div class="stat-label">🟡 Incomplete</div>
+        </div>
+    </div>
+    <div class="col-6 col-sm-4 col-lg-2">
+        <div class="stat-card" style="background:#6c757d;">
+            <div class="stat-value">{{ not_inspected_summary }}</div>
+            <div class="stat-label">⬜ Not Inspected</div>
+        </div>
+    </div>
+</div>
+
+<!-- Side filter + legend row -->
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+    <!-- Side filter pills -->
+    <div class="d-flex gap-2 flex-wrap align-items-center">
+        <span class="text-muted" style="font-size:0.85rem;font-weight:500;">Filter by side:</span>
+        <a href="{% url 'section_map' %}" class="side-filter-btn {% if not selected_side %}active{% endif %}">All</a>
+        {% for s in all_sides %}
+        <a href="{% url 'section_map' %}?side={{ s|urlencode }}" class="side-filter-btn {% if selected_side == s %}active{% endif %}">{{ s }}</a>
+        {% endfor %}
+    </div>
+    <!-- Legend -->
+    <div class="d-flex gap-3 flex-wrap" style="font-size:0.82rem; color:var(--color-text-muted);">
+        <span><span class="legend-dot legend-red"></span> Unrepaired Fail</span>
+        <span><span class="legend-dot legend-amber"></span> Incomplete</span>
+        <span><span class="legend-dot legend-blue"></span> All Repaired</span>
+        <span><span class="legend-dot legend-green"></span> All Passed</span>
+        <span><span class="legend-dot legend-gray"></span> Not Inspected</span>
+    </div>
+</div>
+
+{% if section_tiles %}
+    {% if selected_side %}
+        <!-- Single side: flat grid -->
+        <div class="section-grid">
+            {% for tile in section_tiles %}
+            {% include 'welds/_section_tile.html' %}
+            {% endfor %}
+        </div>
+    {% else %}
+        <!-- Grouped by side -->
+        {% for side, tiles in sides_groups.items %}
+        <h2 class="side-heading">{{ side }}</h2>
+        <div class="section-grid">
+            {% for tile in tiles %}
+            {% include 'welds/_section_tile.html' %}
+            {% endfor %}
+        </div>
+        {% endfor %}
+    {% endif %}
+{% else %}
+    <div class="alert alert-secondary mt-3">No sections found.</div>
+{% endif %}
+{% endblock %}

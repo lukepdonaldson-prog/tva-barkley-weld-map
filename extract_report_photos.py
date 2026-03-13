@@ -60,10 +60,20 @@ HEADER_STRINGS = {
     "DRIVING INSPECTION FORWARD",
 }
 
-# Images smaller than these thresholds are considered logos / decorations
-MIN_IMAGE_WIDTH = 100   # pixels
-MIN_IMAGE_HEIGHT = 100  # pixels
-MIN_IMAGE_BYTES = 1_024  # 1 KB — logos are typically just a few hundred bytes
+# Substrings that, if found in a matched description, indicate the text is
+# header content that leaked through (e.g. a partial line from the IPC banner).
+HEADER_SUBSTRINGS = ("INNOVATIVE", "PLANT CONSULTING", "DRIVING INSPECTION")
+
+# Images smaller than these thresholds are considered logos / decorations.
+# Real weld photos are large; IPC circular logos are small.
+# Use OR logic: skip if width < threshold OR height < threshold.
+MIN_IMAGE_WIDTH = 200   # pixels
+MIN_IMAGE_HEIGHT = 200  # pixels
+MIN_IMAGE_BYTES = 5_000  # 5 KB — logos are typically well under this
+
+# The IPC header occupies roughly the top 12% of each page.
+# Any image whose vertical centre falls in this region is a logo.
+HEADER_REGION_FRACTION = 0.12
 
 # Characters not allowed in Windows filenames
 WIN_INVALID_CHARS = re.compile(r'[\\/:*?"<>|]')
@@ -181,11 +191,10 @@ def extract_page_photos(page: "fitz.Page") -> list[dict]:
         img_width = base_image.get("width", 0)
         img_height = base_image.get("height", 0)
 
-        # Skip logos / decorative images: must fail BOTH size checks to be skipped.
-        # Real weld photos are large; IPC logos are tiny in both dimensions and bytes.
-        is_small_pixels = img_width < MIN_IMAGE_WIDTH and img_height < MIN_IMAGE_HEIGHT
-        is_small_bytes = len(img_bytes) < MIN_IMAGE_BYTES
-        if is_small_pixels and is_small_bytes:
+        # Skip small images using OR logic — either dimension or byte size too small.
+        if img_width < MIN_IMAGE_WIDTH or img_height < MIN_IMAGE_HEIGHT:
+            continue
+        if len(img_bytes) < MIN_IMAGE_BYTES:
             continue
 
         # Find the bounding rect of this image on the page.
@@ -202,6 +211,12 @@ def extract_page_photos(page: "fitz.Page") -> list[dict]:
             # Older PyMuPDF wraps the Rect in an object with a .rect attribute
             rect = rect.rect
 
+        # Skip images whose vertical centre falls in the header region.
+        # The IPC header (logos + title) occupies roughly the top 12% of the page.
+        img_center_y = (rect.y0 + rect.y1) / 2
+        if img_center_y < page_rect.height * HEADER_REGION_FRACTION:
+            continue
+
         raw_images.append(
             {
                 "xref": xref,
@@ -217,12 +232,20 @@ def extract_page_photos(page: "fitz.Page") -> list[dict]:
         return []
 
     # ------------------------------------------------------------------
-    # 2. Sort images top-to-bottom, left-to-right
+    # 2. Safety cap: never more than 4 weld photos per page.
+    #    If more images slipped through, keep only the 4 largest by area.
+    # ------------------------------------------------------------------
+    if len(raw_images) > 4:
+        raw_images.sort(key=lambda i: i["width"] * i["height"], reverse=True)
+        raw_images = raw_images[:4]
+
+    # ------------------------------------------------------------------
+    # 3. Sort images top-to-bottom, left-to-right
     # ------------------------------------------------------------------
     raw_images.sort(key=lambda i: (round(i["rect"].y0 / 50) * 50, i["rect"].x0))
 
     # ------------------------------------------------------------------
-    # 3. Collect text lines, skip header / footer
+    # 4. Collect text lines, skip header / footer
     #
     # We use get_text("dict") rather than get_text("blocks") so that text
     # spanning the same vertical position in different columns (e.g. the
@@ -255,7 +278,7 @@ def extract_page_photos(page: "fitz.Page") -> list[dict]:
             )
 
     # ------------------------------------------------------------------
-    # 4. Match each image to the closest text block below it
+    # 5. Match each image to the closest text block below it
     # ------------------------------------------------------------------
     results = []
     used_text_indices: set[int] = set()
@@ -290,6 +313,11 @@ def extract_page_photos(page: "fitz.Page") -> list[dict]:
         if best_idx is not None:
             used_text_indices.add(best_idx)
             description = text_blocks[best_idx]["text"].replace("\n", " ").strip()
+            # Sanity-check: if the matched text is header content that leaked
+            # through, discard it so the caller generates an UNKNOWN_* name.
+            desc_upper = description.upper()
+            if any(phrase in desc_upper for phrase in HEADER_SUBSTRINGS):
+                description = ""
         else:
             description = ""  # caller will create an UNKNOWN_* name
 

@@ -18,6 +18,7 @@ urlpatterns = [
     path('accounts/users/<int:pk>/delete/', user_delete, name='user_delete'),
     path('accounts/users/<int:pk>/reset-password/', user_reset_password, name='user_reset_password'),
     path('gallery/', include('gallery.urls')),
+    path('reports/', include('reports.urls')),
     path('welds/', include('welds.urls')),
     path('import/', include('welds.import_urls')),
 ]

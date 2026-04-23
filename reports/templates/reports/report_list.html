@@ -1,0 +1,159 @@
+{% extends 'welds/base.html' %}
+
+{% block title %}NDE Reports — TVA Barkley{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-heading {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--color-primary);
+        margin-bottom: 1.25rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <h1 class="page-heading mb-0">📄 NDE Reports</h1>
+    <a href="{% url 'report_upload' %}" class="btn btn-primary" style="background:var(--color-accent); border-color:var(--color-accent);">📤 Upload New Report</a>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="stat-card stat-primary">
+            <span class="stat-icon">📄</span>
+            <div class="stat-value">{{ count_all }}</div>
+            <div class="stat-label">Total Reports</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card stat-info">
+            <span class="stat-icon">🔍</span>
+            <div class="stat-value">{{ count_filtered }}</div>
+            <div class="stat-label">Filtered</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card stat-warning">
+            <span class="stat-icon">📡</span>
+            <div class="stat-value">{{ count_ut }}</div>
+            <div class="stat-label">UT Reports</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card stat-success">
+            <span class="stat-icon">🧲</span>
+            <div class="stat-value">{{ count_mt }}</div>
+            <div class="stat-label">MT Reports</div>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body py-3">
+        <form method="get" class="filter-row">
+            <div class="row g-2 align-items-end">
+                <div class="col-12 col-md-3">
+                    <select name="report_type" class="form-select form-select-sm">
+                        <option value="">All Types</option>
+                        {% for code, label in report_types %}
+                        <option value="{{ code }}" {% if selected_type == code %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12 col-md-3">
+                    <input type="text" name="section" class="form-control form-control-sm" placeholder="Section (e.g. AX, CX)" value="{{ selected_section }}">
+                </div>
+                <div class="col-12 col-md-3">
+                    <input type="text" name="search" class="form-control form-control-sm" placeholder="Keyword search" value="{{ search }}">
+                </div>
+                <div class="col-12 col-md-auto d-flex gap-2 flex-wrap">
+                    <button type="submit" class="btn btn-primary btn-sm px-3">Filter</button>
+                    <a href="{% url 'report_list' %}" class="btn btn-outline-secondary btn-sm px-3">Clear</a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sticky-header mb-0">
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Type</th>
+                        <th>Section</th>
+                        <th>Uploaded</th>
+                        <th>Uploaded By</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for report in page_obj %}
+                    <tr>
+                        <td>{{ report.title }}</td>
+                        <td>
+                            {% if report.report_type == 'UT' %}
+                                <span class="badge bg-primary">UT</span>
+                            {% elif report.report_type == 'MT' %}
+                                <span class="badge bg-warning text-dark">MT</span>
+                            {% elif report.report_type == 'PT' %}
+                                <span class="badge bg-info text-dark">PT</span>
+                            {% elif report.report_type == 'VT' %}
+                                <span class="badge bg-secondary">VT</span>
+                            {% elif report.report_type == 'RT' %}
+                                <span class="badge bg-dark">RT</span>
+                            {% else %}
+                                <span class="badge bg-light text-dark">Other</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ report.section|default:'—' }}</td>
+                        <td>{{ report.uploaded_at|date:'Y-m-d H:i' }}</td>
+                        <td>{{ report.uploaded_by|default:'—' }}</td>
+                        <td>
+                            <a href="{% url 'report_view' report.pk %}" class="btn btn-outline-primary btn-sm">👁️ View</a>
+                            <a href="{% url 'report_delete' report.pk %}" class="btn btn-outline-danger btn-sm">🗑️ Delete</a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-4">No reports found matching your filters.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% if page_obj.has_other_pages %}
+<nav class="mt-4">
+    <ul class="pagination justify-content-center flex-wrap">
+        {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">← Prev</a>
+            </li>
+        {% endif %}
+
+        {% for num in page_obj.paginator.page_range %}
+            {% if page_obj.number == num %}
+                <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a>
+                </li>
+            {% endif %}
+        {% endfor %}
+
+        {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Next →</a>
+            </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+{% endblock %}

@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'welds',
     'gallery',
+    'reports',
 ]
 
 MIDDLEWARE = [

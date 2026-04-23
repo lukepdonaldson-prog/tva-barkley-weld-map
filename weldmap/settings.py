@@ -2,7 +2,6 @@
 Django settings for weldmap project.
 """
 import os
-import sys
 from pathlib import Path
 
 try:
@@ -120,16 +119,16 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-_IS_TEST = 'test' in sys.argv
+_USE_MANIFEST_STATICFILES = not DEBUG and (STATIC_ROOT / 'staticfiles.json').exists()
 STORAGES = {
     'default': {
         'BACKEND': 'django.core.files.storage.FileSystemStorage',
     },
     'staticfiles': {
         'BACKEND': (
-            'django.contrib.staticfiles.storage.StaticFilesStorage'
-            if _IS_TEST
-            else 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+            'whitenoise.storage.CompressedManifestStaticFilesStorage'
+            if _USE_MANIFEST_STATICFILES
+            else 'django.contrib.staticfiles.storage.StaticFilesStorage'
         ),
     },
 }

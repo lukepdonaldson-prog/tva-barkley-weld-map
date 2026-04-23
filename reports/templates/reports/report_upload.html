@@ -10,6 +10,48 @@
         color: var(--color-primary);
         margin-bottom: 1.25rem;
     }
+    .drop-zone {
+        border: 2.5px dashed var(--color-accent);
+        border-radius: var(--radius);
+        background: var(--color-card-bg);
+        padding: 2.5rem 1.5rem;
+        text-align: center;
+        cursor: pointer;
+        transition: background 0.2s, border-color 0.2s;
+    }
+    .drop-zone.dragover {
+        background: #eef4fb;
+        border-color: #2e6da4;
+    }
+    .drop-zone .dz-icon {
+        font-size: 3rem;
+        display: block;
+        margin-bottom: 0.75rem;
+        pointer-events: none;
+    }
+    .drop-zone .dz-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--color-text);
+        pointer-events: none;
+    }
+    .drop-zone .dz-subtitle {
+        font-size: 0.85rem;
+        color: var(--color-text-muted);
+        margin-top: 0.3rem;
+        pointer-events: none;
+    }
+    .drop-zone .dz-filename {
+        margin-top: 0.6rem;
+        font-size: 0.92rem;
+        font-weight: 600;
+        color: var(--color-accent);
+        word-break: break-word;
+        pointer-events: none;
+    }
+    .drop-zone input[type="file"] {
+        display: none;
+    }
 </style>
 {% endblock %}
 
@@ -37,7 +79,13 @@
             </div>
             <div class="col-12">
                 <label class="form-label">{{ form.report_file.label }}</label>
-                {{ form.report_file }}
+                <div class="drop-zone" id="pdf-drop-zone" role="button" tabindex="0" aria-label="Upload PDF file">
+                    <span class="dz-icon">☁️</span>
+                    <div class="dz-title">Drag &amp; drop your PDF here</div>
+                    <div class="dz-subtitle">or click to browse</div>
+                    <div class="dz-filename" id="pdf-file-name"></div>
+                    {{ form.report_file }}
+                </div>
             </div>
             <div class="col-12">
                 <label class="form-label">{{ form.notes.label }}</label>
@@ -50,4 +98,81 @@
         <p class="text-muted mt-3 mb-0" style="font-size:0.9rem;">PDFs are stored locally and viewable in-browser. Notes/keywords improve searchability.</p>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    const dropZone = document.getElementById('pdf-drop-zone');
+    const fileInput = document.getElementById('id_report_file');
+    const fileNameDisplay = document.getElementById('pdf-file-name');
+    const titleInput = document.getElementById('id_title');
+
+    if (!dropZone || !fileInput || !titleInput) {
+        return;
+    }
+
+    function setTitleFromFile(file) {
+        if (file && (!titleInput.value || titleInput.dataset.autoFilled === 'true')) {
+            const nameWithoutExt = file.name.replace(/\.pdf$/i, '');
+            titleInput.value = nameWithoutExt;
+            titleInput.dataset.autoFilled = 'true';
+        }
+    }
+
+    function handleFile(file) {
+        if (!file) {
+            return;
+        }
+        fileNameDisplay.textContent = file.name;
+        setTitleFromFile(file);
+    }
+
+    titleInput.addEventListener('input', function () {
+        this.dataset.autoFilled = '';
+    });
+
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            fileInput.click();
+        }
+    });
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, event => {
+            event.preventDefault();
+            event.stopPropagation();
+            dropZone.classList.add('dragover');
+        });
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, event => {
+            event.preventDefault();
+            event.stopPropagation();
+            dropZone.classList.remove('dragover');
+        });
+    });
+
+    dropZone.addEventListener('drop', event => {
+        const file = event.dataTransfer && event.dataTransfer.files ? event.dataTransfer.files[0] : null;
+        if (!file) {
+            return;
+        }
+        if (window.DataTransfer) {
+            const dt = new DataTransfer();
+            dt.items.add(file);
+            fileInput.files = dt.files;
+        }
+        handleFile(file);
+    });
+
+    fileInput.addEventListener('change', () => {
+        const file = fileInput.files && fileInput.files.length ? fileInput.files[0] : null;
+        handleFile(file);
+    });
+})();
+</script>
 {% endblock %}

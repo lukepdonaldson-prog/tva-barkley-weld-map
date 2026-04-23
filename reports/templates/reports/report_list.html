@@ -86,8 +86,6 @@
                         <th>Title</th>
                         <th>Type</th>
                         <th>Section</th>
-                        <th>Uploaded</th>
-                        <th>Uploaded By</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -111,8 +109,6 @@
                             {% endif %}
                         </td>
                         <td>{{ report.section|default:'—' }}</td>
-                        <td>{{ report.uploaded_at|date:'Y-m-d H:i' }}</td>
-                        <td>{{ report.uploaded_by|default:'—' }}</td>
                         <td>
                             <a href="{% url 'report_view' report.pk %}" class="btn btn-outline-primary btn-sm">👁️ View</a>
                             <a href="{% url 'report_delete' report.pk %}" class="btn btn-outline-danger btn-sm">🗑️ Delete</a>
@@ -120,7 +116,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="6" class="text-center text-muted py-4">No reports found matching your filters.</td>
+                        <td colspan="4" class="text-center text-muted py-4">No reports found matching your filters.</td>
                     </tr>
                     {% endfor %}
                 </tbody>

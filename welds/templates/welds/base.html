@@ -245,6 +245,9 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto gap-1">
                     <li class="nav-item">
+                        <a class="nav-link {% if request.path == '/welds/dashboard/' %}active{% endif %}" href="{% url 'dashboard' %}">🏠 Dashboard</a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link {% if request.path|slice:':7' == '/welds/' %}active{% endif %}" href="{% url 'weld_list' %}">📋 Weld List</a>
                     </li>
                     <li class="nav-item">

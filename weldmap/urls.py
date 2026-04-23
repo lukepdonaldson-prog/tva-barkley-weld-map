@@ -9,7 +9,7 @@ from welds.user_views import (
 )
 
 urlpatterns = [
-    path('', login_required(RedirectView.as_view(url='/welds/', permanent=False))),
+    path('', login_required(RedirectView.as_view(url='/welds/dashboard/', permanent=False))),
     path('admin/', admin.site.urls),
     path('accounts/', include('django.contrib.auth.urls')),
     path('accounts/users/', user_list, name='user_management'),

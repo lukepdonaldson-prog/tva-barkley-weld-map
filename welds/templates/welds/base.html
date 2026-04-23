@@ -257,6 +257,9 @@
                         <a class="nav-link {% if request.path|slice:':8' == '/import/' %}active{% endif %}" href="{% url 'import_page' %}">📥 Import</a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link {% if request.path|slice:':9' == '/reports/' %}active{% endif %}" href="{% url 'report_list' %}">📄 NDE Reports</a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link {% if request.path == '/welds/section-map/' %}active{% endif %}" href="{% url 'section_map' %}">🗺️ Section Map</a>
                     </li>
                     <li class="nav-item">

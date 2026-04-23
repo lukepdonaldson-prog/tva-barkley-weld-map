@@ -1,0 +1,65 @@
+{% extends 'welds/base.html' %}
+
+{% block title %}{{ report.title }} — NDE Report{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-heading {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--color-primary);
+        margin-bottom: 0.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <a href="{% url 'report_list' %}" class="btn btn-outline-secondary">← Back to Reports</a>
+</div>
+
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a href="{% url 'report_list' %}">NDE Reports</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ report.title }}</li>
+    </ol>
+</nav>
+
+<h1 class="page-heading">{{ report.title }}</h1>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-12 col-md-6"><strong>Title:</strong> {{ report.title }}</div>
+            <div class="col-12 col-md-6">
+                <strong>Type:</strong>
+                {% if report.report_type == 'UT' %}
+                    <span class="badge bg-primary">UT</span>
+                {% elif report.report_type == 'MT' %}
+                    <span class="badge bg-warning text-dark">MT</span>
+                {% elif report.report_type == 'PT' %}
+                    <span class="badge bg-info text-dark">PT</span>
+                {% elif report.report_type == 'VT' %}
+                    <span class="badge bg-secondary">VT</span>
+                {% elif report.report_type == 'RT' %}
+                    <span class="badge bg-dark">RT</span>
+                {% else %}
+                    <span class="badge bg-light text-dark">Other</span>
+                {% endif %}
+            </div>
+            <div class="col-12 col-md-6"><strong>Section:</strong> {{ report.section|default:'—' }}</div>
+            <div class="col-12 col-md-6"><strong>Uploaded:</strong> {{ report.uploaded_at|date:'Y-m-d H:i' }}</div>
+            <div class="col-12 col-md-6"><strong>Uploaded by:</strong> {{ report.uploaded_by|default:'—' }}</div>
+            <div class="col-12"><strong>Notes:</strong> {{ report.notes|default:'—' }}</div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-2">
+        <iframe src="{{ report.report_file.url }}" width="100%" height="800px" style="border: none; border-radius: 0.5rem;">
+            <p>Your browser does not support embedded PDFs. <a href="{{ report.report_file.url }}">Click here to download the PDF</a>.</p>
+        </iframe>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,53 @@
+{% extends 'welds/base.html' %}
+
+{% block title %}Upload NDE Report — TVA Barkley{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-heading {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--color-primary);
+        margin-bottom: 1.25rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <h1 class="page-heading mb-0">📤 Upload NDE Report</h1>
+    <a href="{% url 'report_list' %}" class="btn btn-outline-secondary">← Back to Reports</a>
+</div>
+
+<div class="card">
+    <div class="card-body p-4">
+        <form method="post" enctype="multipart/form-data" class="row g-3">
+            {% csrf_token %}
+            <div class="col-12">
+                <label class="form-label">{{ form.title.label }}</label>
+                {{ form.title }}
+            </div>
+            <div class="col-12 col-md-6">
+                <label class="form-label">{{ form.report_type.label }}</label>
+                {{ form.report_type }}
+            </div>
+            <div class="col-12 col-md-6">
+                <label class="form-label">{{ form.section.label }}</label>
+                {{ form.section }}
+            </div>
+            <div class="col-12">
+                <label class="form-label">{{ form.report_file.label }}</label>
+                {{ form.report_file }}
+            </div>
+            <div class="col-12">
+                <label class="form-label">{{ form.notes.label }}</label>
+                {{ form.notes }}
+            </div>
+            <div class="col-12">
+                <button type="submit" class="btn btn-primary">Upload Report</button>
+            </div>
+        </form>
+        <p class="text-muted mt-3 mb-0" style="font-size:0.9rem;">PDFs are stored locally and viewable in-browser. Notes/keywords improve searchability.</p>
+    </div>
+</div>
+{% endblock %}

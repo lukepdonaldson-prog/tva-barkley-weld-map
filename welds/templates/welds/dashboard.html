@@ -1,0 +1,288 @@
+{% extends 'welds/base.html' %}
+
+{% block title %}Project Dashboard - TVA Barkley Weld Map{% endblock %}
+
+{% block extra_css %}
+<style>
+    .dashboard-subtitle {
+        color: var(--color-text-muted);
+        font-size: 0.95rem;
+    }
+    .chart-card {
+        height: 100%;
+    }
+    .donut-wrap {
+        position: relative;
+        max-height: 300px;
+        max-width: 320px;
+        margin: 0 auto;
+    }
+    .donut-center-text {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        pointer-events: none;
+        font-weight: 700;
+        color: var(--color-primary);
+    }
+    .section-chart-scroll {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+    .section-chart-inner {
+        min-height: 320px;
+        min-width: 100%;
+    }
+    .quick-link-card {
+        text-decoration: none;
+        color: inherit;
+        cursor: pointer;
+        transition: transform 0.15s, box-shadow 0.2s;
+    }
+    .quick-link-card:hover {
+        transform: translateY(-3px);
+        box-shadow: var(--shadow-lg);
+    }
+    .quick-link-icon {
+        font-size: 2rem;
+        line-height: 1;
+    }
+    .quick-link-desc {
+        color: var(--color-text-muted);
+        font-size: 0.88rem;
+    }
+    .badge-na {
+        background-color: #6c757d;
+        color: #fff;
+        font-size: 0.78rem;
+        font-weight: 600;
+        padding: 0.3em 0.65em;
+        border-radius: 0.3rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap align-items-end justify-content-between mb-3 gap-2">
+    <div>
+        <h1 class="h3 mb-1">📊 Project Dashboard</h1>
+        <p class="dashboard-subtitle mb-0">TVA Barkley Dam — Gate Repair Weld Inspection</p>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="stat-card stat-primary h-100">
+            <span class="stat-icon">🔩</span>
+            <div class="stat-value">{{ total_welds }}</div>
+            <div class="stat-label">Total Welds</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="stat-card stat-success h-100">
+            <span class="stat-icon">✅</span>
+            <div class="stat-value">{{ pass_count }}</div>
+            <div class="stat-label">Pass</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="stat-card stat-danger h-100">
+            <span class="stat-icon">❌</span>
+            <div class="stat-value">{{ fail_count }}</div>
+            <div class="stat-label">Fail</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="stat-card stat-info h-100">
+            <span class="stat-icon">📈</span>
+            <div class="stat-value">{{ pass_rate }}%</div>
+            <div class="stat-label">Pass Rate</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="stat-card stat-warning h-100">
+            <span class="stat-icon">📷</span>
+            <div class="stat-value">{{ total_photos }}</div>
+            <div class="stat-label">Photos</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="stat-card stat-primary h-100">
+            <span class="stat-icon">📄</span>
+            <div class="stat-value">{{ total_reports }}</div>
+            <div class="stat-label">NDE Reports</div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-lg-5">
+        <div class="card chart-card">
+            <div class="card-body">
+                <h5 class="card-title mb-3">Inspection Status Overview</h5>
+                <div class="donut-wrap">
+                    <canvas id="donutChart"></canvas>
+                    <div class="donut-center-text">{{ pass_rate }}% Pass Rate</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-7">
+        <div class="card chart-card">
+            <div class="card-body">
+                <h5 class="card-title mb-3">Pass / Fail by Section</h5>
+                <div class="section-chart-scroll">
+                    <div class="section-chart-inner">
+                        <canvas id="sectionBarChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-lg-3">
+        <a href="/welds/" class="card quick-link-card h-100 border-0">
+            <div class="card-body">
+                <div class="quick-link-icon text-primary mb-2">📋</div>
+                <h6 class="mb-1">Weld List</h6>
+                <p class="quick-link-desc mb-0">View and filter all weld records.</p>
+            </div>
+        </a>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <a href="/gallery/qa-dashboard/" class="card quick-link-card h-100 border-0">
+            <div class="card-body">
+                <div class="quick-link-icon mb-2" style="color:#1a2332;">🔒</div>
+                <h6 class="mb-1">QA Dashboard</h6>
+                <p class="quick-link-desc mb-0">Review quality metrics and QA status.</p>
+            </div>
+        </a>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <a href="/gallery/" class="card quick-link-card h-100 border-0">
+            <div class="card-body">
+                <div class="quick-link-icon mb-2" style="color:#17a2b8;">📷</div>
+                <h6 class="mb-1">Photo Library</h6>
+                <p class="quick-link-desc mb-0">Browse weld photos and field imagery.</p>
+            </div>
+        </a>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <a href="/reports/" class="card quick-link-card h-100 border-0">
+            <div class="card-body">
+                <div class="quick-link-icon text-warning mb-2">📄</div>
+                <h6 class="mb-1">NDE Reports</h6>
+                <p class="quick-link-desc mb-0">Open, search, and manage reports.</p>
+            </div>
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <h5 class="card-title mb-3">Recently Updated Welds</h5>
+        <div class="table-responsive">
+            <table class="table mb-0">
+                <thead>
+                    <tr>
+                        <th>Section</th>
+                        <th>Weld ID</th>
+                        <th>Pass/Fail</th>
+                        <th>Last Updated</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for weld in recent_welds %}
+                    <tr>
+                        <td>{{ weld.section }}</td>
+                        <td>{{ weld.weld_id4|default:weld.weld_id }}</td>
+                        <td>
+                            {% if weld.pass_fail|lower == 'pass' %}
+                            <span class="badge-pass">Pass</span>
+                            {% elif weld.pass_fail|lower == 'fail' %}
+                            <span class="badge-fail">Fail</span>
+                            {% else %}
+                            <span class="badge-na">Not Inspected</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ weld.updated_at|date:"Y-m-d H:i" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="text-center text-muted py-3">No weld records found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="text-end mt-2">
+            <a href="/welds/" class="section-link">View all welds →</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const donutData = {{ donut_data_json|safe }};
+    const donutCtx = document.getElementById('donutChart').getContext('2d');
+    new Chart(donutCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Pass', 'Fail', 'Not Inspected'],
+            datasets: [{
+                data: [donutData.pass, donutData.fail, donutData.not_inspected],
+                backgroundColor: ['#28a745', '#dc3545', '#6c757d'],
+                borderWidth: 2,
+                borderColor: '#fff',
+            }]
+        },
+        options: {
+            responsive: true,
+            cutout: '65%',
+            plugins: {
+                legend: { position: 'bottom' },
+            }
+        }
+    });
+
+    const sectionLabels = {{ section_labels_json|safe }};
+    const sectionPass = {{ section_pass_json|safe }};
+    const sectionFail = {{ section_fail_json|safe }};
+    const barCtx = document.getElementById('sectionBarChart').getContext('2d');
+    new Chart(barCtx, {
+        type: 'bar',
+        data: {
+            labels: sectionLabels,
+            datasets: [
+                {
+                    label: 'Pass',
+                    data: sectionPass,
+                    backgroundColor: '#28a745',
+                },
+                {
+                    label: 'Fail',
+                    data: sectionFail,
+                    backgroundColor: '#dc3545',
+                }
+            ]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            scales: {
+                x: { stacked: true },
+                y: { stacked: true }
+            },
+            plugins: {
+                legend: { position: 'bottom' }
+            }
+        }
+    });
+</script>
+{% endblock %}

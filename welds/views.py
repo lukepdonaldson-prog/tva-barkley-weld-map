@@ -12,7 +12,7 @@ from django.core.paginator import Paginator
 from django.db.models import Sum, Count, Q, Max
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment
-from welds.models import Weld, WeldIdKey
+from welds.models import Weld, WeldPhoto, WeldIdKey
 from welds.export_utils import generate_excel_response, generate_pdf_response
 
 # Fields that may be edited via the inline-edit API
@@ -122,6 +122,59 @@ def weld_list(request):
     }
 
     return render(request, 'welds/weld_list.html', context)
+
+
+@login_required
+def dashboard(request):
+    from reports.models import NDEReport
+
+    total_welds = Weld.objects.count()
+    pass_count = Weld.objects.filter(pass_fail__iexact='pass').count()
+    fail_count = Weld.objects.filter(pass_fail__iexact='fail').count()
+    incomplete_count = Weld.objects.filter(validation_cleared=False).filter(_INCOMPLETE_Q).count()
+    not_inspected = Weld.objects.filter(pass_fail='').count()
+
+    inspected = pass_count + fail_count
+    pass_rate = round((pass_count / inspected) * 100, 1) if inspected > 0 else 0
+
+    section_data = (
+        Weld.objects.values('section')
+        .annotate(
+            total=Count('id'),
+            passed=Count('id', filter=Q(pass_fail__iexact='pass')),
+            failed=Count('id', filter=Q(pass_fail__iexact='fail')),
+        )
+        .order_by('section')
+    )
+
+    total_photos = WeldPhoto.objects.count()
+    total_reports = NDEReport.objects.count()
+    recent_welds = Weld.objects.order_by('-updated_at')[:5]
+
+    donut_data = {
+        'pass': pass_count,
+        'fail': fail_count,
+        'not_inspected': not_inspected,
+    }
+    section_labels = [s['section'] for s in section_data]
+    section_pass = [s['passed'] for s in section_data]
+    section_fail = [s['failed'] for s in section_data]
+
+    return render(request, 'welds/dashboard.html', {
+        'total_welds': total_welds,
+        'pass_count': pass_count,
+        'fail_count': fail_count,
+        'incomplete_count': incomplete_count,
+        'not_inspected': not_inspected,
+        'pass_rate': pass_rate,
+        'total_photos': total_photos,
+        'total_reports': total_reports,
+        'recent_welds': recent_welds,
+        'donut_data_json': json.dumps(donut_data),
+        'section_labels_json': json.dumps(section_labels),
+        'section_pass_json': json.dumps(section_pass),
+        'section_fail_json': json.dumps(section_fail),
+    })
 
 
 @login_required

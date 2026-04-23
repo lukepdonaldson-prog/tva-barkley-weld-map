@@ -48,8 +48,6 @@
                 {% endif %}
             </div>
             <div class="col-12 col-md-6"><strong>Section:</strong> {{ report.section|default:'—' }}</div>
-            <div class="col-12 col-md-6"><strong>Uploaded:</strong> {{ report.uploaded_at|date:'Y-m-d H:i' }}</div>
-            <div class="col-12 col-md-6"><strong>Uploaded by:</strong> {{ report.uploaded_by|default:'—' }}</div>
             <div class="col-12"><strong>Notes:</strong> {{ report.notes|default:'—' }}</div>
         </div>
     </div>
@@ -57,9 +55,21 @@
 
 <div class="card">
     <div class="card-body p-2">
-        <iframe src="{{ report.report_file.url }}" width="100%" height="800px" style="border: none; border-radius: 0.5rem;">
-            <p>Your browser does not support embedded PDFs. <a href="{{ report.report_file.url }}">Click here to download the PDF</a>.</p>
-        </iframe>
+        <div class="mb-3 d-flex gap-2">
+            <a href="{{ report.report_file.url }}" target="_blank" class="btn btn-primary">
+                🔗 Open PDF in New Tab
+            </a>
+            <a href="{{ report.report_file.url }}" download class="btn btn-outline-secondary">
+                ⬇️ Download PDF
+            </a>
+        </div>
+        <object data="{{ report.report_file.url }}" type="application/pdf" width="100%" height="800px" style="border-radius: 0.5rem; border: 1px solid #dee2e6;">
+            <div class="alert alert-info mt-3">
+                <p>Your browser cannot display the PDF inline.</p>
+                <a href="{{ report.report_file.url }}" target="_blank" class="btn btn-primary">Open PDF in New Tab</a>
+                <a href="{{ report.report_file.url }}" download class="btn btn-outline-secondary ms-2">Download PDF</a>
+            </div>
+        </object>
     </div>
 </div>
 {% endblock %}

@@ -34,8 +34,6 @@ def report_list(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    sections = NDEReport.objects.values_list('section', flat=True).order_by('section').distinct().exclude(section='')
-
     return render(request, 'reports/report_list.html', {
         'page_obj': page_obj,
         'count_all': count_all,
@@ -43,7 +41,6 @@ def report_list(request):
         'count_ut': count_ut,
         'count_mt': count_mt,
         'report_types': REPORT_TYPE_CHOICES,
-        'sections': sections,
         'selected_type': report_type,
         'selected_section': section,
         'search': search,

@@ -114,4 +114,4 @@ class NDEReportTests(TestCase):
         self.assertContains(response, 'Drag &amp; drop your PDF here')
         self.assertContains(response, 'or click to browse')
         self.assertContains(response, 'function setTitleFromFile(file)')
-        self.assertContains(response, "titleInput.dataset.autoFilled = 'true';")
+        self.assertContains(response, 'titleInput.dataset.autoFilled')

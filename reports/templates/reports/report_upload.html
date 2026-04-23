@@ -113,10 +113,10 @@
     }
 
     function setTitleFromFile(file) {
-        if (file && (!titleInput.value || titleInput.dataset.autoFilled === 'true')) {
+        if (file && (!titleInput.value || titleInput.dataset.autoFilled === '1')) {
             const nameWithoutExt = file.name.replace(/\.pdf$/i, '');
             titleInput.value = nameWithoutExt;
-            titleInput.dataset.autoFilled = 'true';
+            titleInput.dataset.autoFilled = '1';
         }
     }
 
@@ -129,15 +129,14 @@
     }
 
     titleInput.addEventListener('input', function () {
-        this.dataset.autoFilled = '';
+        delete this.dataset.autoFilled;
     });
 
     dropZone.addEventListener('click', () => fileInput.click());
     dropZone.addEventListener('keydown', event => {
-        if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault();
-            fileInput.click();
-        }
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        fileInput.click();
     });
 
     ['dragenter', 'dragover'].forEach(eventName => {
@@ -165,6 +164,10 @@
             const dt = new DataTransfer();
             dt.items.add(file);
             fileInput.files = dt.files;
+        } else {
+            fileInput.value = '';
+            fileNameDisplay.textContent = 'Your browser does not support drag-and-drop file uploads. Please use click to browse instead.';
+            return;
         }
         handleFile(file);
     });

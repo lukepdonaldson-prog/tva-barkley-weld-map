@@ -137,7 +137,7 @@
                 <tbody>
                     {% for weld in welds %}
                     {% with missing=weld.get_missing_fields %}
-                    <tr data-pk="{{ weld.pk }}">
+                    <tr class="row-incomplete" data-pk="{{ weld.pk }}">
                         <td><input type="checkbox" class="row-check" value="{{ weld.pk }}"></td>
                         <td>{{ weld.section }}</td>
                         <td><a href="{% url 'weld_detail' weld.pk %}" class="section-link">{{ weld.weld_id4 }}</a></td>

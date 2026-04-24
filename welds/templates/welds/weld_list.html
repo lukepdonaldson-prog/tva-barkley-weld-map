@@ -26,6 +26,11 @@
     }
     tr.editing td { background: #f0f7ff; }
     .row-actions { white-space: nowrap; }
+    /* Sticky table scroll container */
+    .table-responsive-sticky {
+        max-height: 70vh;
+        overflow-y: auto;
+    }
     /* Toast notification */
     #inline-toast {
         position: fixed;
@@ -166,7 +171,7 @@
 <div class="card">
     <div class="card-body p-0">
         <div class="table-container">
-        <div class="table-responsive">
+        <div class="table-responsive table-responsive-sticky">
             <table class="table table-sticky-header mb-0">
                 <thead>
                     <tr>
@@ -184,7 +189,7 @@
                 </thead>
                 <tbody>
                     {% for weld in welds %}
-                    <tr class="{% if weld.pass_fail == 'Fail' %}row-fail{% endif %}" data-pk="{{ weld.pk }}">
+                    <tr class="{% if weld.pass_fail == 'Pass' %}row-pass{% elif weld.pass_fail == 'Fail' %}row-fail{% endif %}" data-pk="{{ weld.pk }}">
                         <!-- Display cells -->
                         <td class="d-cell"><a href="{% url 'weld_detail' weld.pk %}" class="section-link">{{ weld.section }}</a></td>
                         <td class="d-cell">
@@ -354,13 +359,15 @@
                 const pf = fieldMap['pass_fail'] || '';
                 if (pf === 'Pass') {
                     dCells[5].innerHTML = '<span class="badge-pass">✓ Pass</span>';
-                    row.classList.remove('row-fail');
+                    row.classList.remove('row-fail', 'row-incomplete');
+                    row.classList.add('row-pass');
                 } else if (pf === 'Fail') {
                     dCells[5].innerHTML = '<span class="badge-fail">✗ Fail</span>';
+                    row.classList.remove('row-pass', 'row-incomplete');
                     row.classList.add('row-fail');
                 } else {
                     dCells[5].innerHTML = '<span class="text-muted">' + pf + '</span>';
-                    row.classList.remove('row-fail');
+                    row.classList.remove('row-pass', 'row-fail', 'row-incomplete');
                 }
                 dCells[6].textContent = fieldMap['report'] || '';
                 dCells[7].textContent = fieldMap['date'] || '';

@@ -233,6 +233,216 @@
                 font-size: 1.5rem;
             }
         }
+
+        /* ── Page header style ── */
+        .page-header {
+            border-left: 4px solid var(--color-accent);
+            padding-left: 0.85rem;
+            margin-bottom: 1.5rem;
+        }
+        .page-header h2, .page-header h1 {
+            font-weight: 700;
+            font-size: 1.45rem;
+            color: var(--color-primary);
+            margin-bottom: 0.15rem;
+        }
+        .page-header .page-subtitle {
+            font-size: 0.88rem;
+            color: var(--color-text-muted);
+            margin: 0;
+        }
+
+        /* ── Card header accent ── */
+        .card-header-accent {
+            background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
+            color: #fff;
+            font-weight: 600;
+            font-size: 0.92rem;
+            letter-spacing: 0.03em;
+            border-radius: var(--radius) var(--radius) 0 0 !important;
+            padding: 0.75rem 1rem;
+            border: none;
+        }
+
+        /* ── Table improvements ── */
+        .table tbody tr:nth-child(even) {
+            background-color: #f9fafc;
+        }
+        .table tbody tr {
+            transition: background-color 0.1s ease;
+        }
+        .table-container {
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+        }
+
+        /* ── Button refinements ── */
+        .btn {
+            font-weight: 500;
+            font-size: 0.88rem;
+            border-radius: 0.4rem;
+            padding: 0.42rem 0.9rem;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #2e6da4, #1a4a75);
+            border-color: #1a4a75;
+        }
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #1a4a75, #0f3055);
+            border-color: #0f3055;
+            transform: translateY(-1px);
+            box-shadow: 0 3px 8px rgba(26,74,117,0.3);
+        }
+        .btn-success {
+            background: linear-gradient(135deg, #28a745, #1a7a32);
+            border-color: #1a7a32;
+        }
+        .btn-success:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 3px 8px rgba(40,167,69,0.3);
+        }
+        .btn-danger:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 3px 8px rgba(220,53,69,0.3);
+        }
+        .btn-outline-secondary:hover {
+            transform: translateY(-1px);
+        }
+
+        /* ── Filter card ── */
+        .filter-card {
+            background: linear-gradient(135deg, #f8f9fc 0%, #eef2f7 100%);
+            border: 1px solid #dde3ec;
+            border-radius: var(--radius);
+            padding: 1rem 1.25rem;
+            margin-bottom: 1.25rem;
+            box-shadow: var(--shadow-sm);
+        }
+
+        /* ── Nav active underline animation ── */
+        .nav-link {
+            position: relative;
+        }
+        .nav-link.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0.9rem;
+            right: 0.9rem;
+            height: 2px;
+            background: #7eb3d8;
+            border-radius: 2px;
+        }
+
+        /* ── Stat card entrance animation ── */
+        @keyframes statFadeIn {
+            from { opacity: 0; transform: translateY(12px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .stat-card {
+            animation: statFadeIn 0.4s ease both;
+        }
+        .stat-card:nth-child(1) { animation-delay: 0.05s; }
+        .stat-card:nth-child(2) { animation-delay: 0.10s; }
+        .stat-card:nth-child(3) { animation-delay: 0.15s; }
+        .stat-card:nth-child(4) { animation-delay: 0.20s; }
+        .stat-card:nth-child(5) { animation-delay: 0.25s; }
+        .stat-card:nth-child(6) { animation-delay: 0.30s; }
+
+        /* ── Empty state ── */
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--color-text-muted);
+        }
+        .empty-state .empty-icon {
+            font-size: 3rem;
+            margin-bottom: 0.75rem;
+            display: block;
+            opacity: 0.5;
+        }
+        .empty-state p {
+            font-size: 1rem;
+            margin: 0;
+        }
+
+        /* ── Loading overlay ── */
+        #loading-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(26, 35, 50, 0.45);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        #loading-overlay.active {
+            display: flex;
+        }
+        #loading-overlay .spinner-border {
+            width: 3rem;
+            height: 3rem;
+            color: #7eb3d8;
+            border-width: 0.3em;
+        }
+        #loading-overlay .loading-text {
+            color: #e8edf3;
+            font-size: 0.95rem;
+            font-weight: 500;
+            letter-spacing: 0.04em;
+        }
+
+        /* ── Footer improvement ── */
+        footer {
+            background-color: var(--color-primary) !important;
+            border-top: 3px solid var(--color-accent);
+        }
+        footer .footer-inner {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        footer p {
+            font-size: 0.8rem;
+            color: #8aa4bc;
+            letter-spacing: 0.04em;
+            margin: 0;
+        }
+        footer .footer-version {
+            font-size: 0.75rem;
+            color: #5a7a96;
+            font-family: monospace;
+        }
+
+        /* ── Badge refinements ── */
+        .badge-pass, .badge-fail {
+            font-size: 0.8rem;
+            font-weight: 600;
+            padding: 0.35em 0.7em;
+            border-radius: 0.35rem;
+            letter-spacing: 0.02em;
+        }
+
+        /* ── Quick link cards (for dashboard) ── */
+        .quick-link-card {
+            cursor: pointer;
+            transition: transform 0.18s ease, box-shadow 0.18s ease;
+            border-radius: var(--radius);
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+        .quick-link-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+            color: inherit;
+            text-decoration: none;
+        }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
@@ -299,11 +509,38 @@
         </div>
     </main>
 
-    <footer class="text-center py-3 mt-auto">
-        <p class="mb-0">TVA Barkley Dam — Weld Inspection System</p>
+    <footer class="py-3 mt-auto">
+        <div class="container">
+            <div class="footer-inner">
+                <p class="mb-0">TVA Barkley Dam — Gate Repair Weld Inspection System</p>
+                <span class="footer-version">v2.0 · IPC Industrial Services</span>
+            </div>
+        </div>
     </footer>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" role="status" aria-label="Loading">
+        <div class="spinner-border" role="status"></div>
+        <span class="loading-text">Loading...</span>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     {% block extra_js %}{% endblock %}
+    <script>
+    // Global loading spinner — triggers on any filter form submit
+    (function () {
+        const overlay = document.getElementById('loading-overlay');
+        if (!overlay) return;
+        document.querySelectorAll('form[method="get"]').forEach(function (form) {
+            form.addEventListener('submit', function () {
+                overlay.classList.add('active');
+            });
+        });
+        // Hide on back-navigation (bfcache restore)
+        window.addEventListener('pageshow', function (e) {
+            if (e.persisted) overlay.classList.remove('active');
+        });
+    })();
+    </script>
 </body>
 </html>

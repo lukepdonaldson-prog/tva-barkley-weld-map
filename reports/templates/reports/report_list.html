@@ -14,8 +14,12 @@
 {% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-    <h1 class="page-heading mb-0">📄 NDE Reports</h1>
+<div class="page-header">
+    <h2>📄 NDE Reports</h2>
+    <p class="page-subtitle">Non-Destructive Examination reports — UT, MT, PT and more</p>
+</div>
+
+<div class="d-flex justify-content-end align-items-center mb-4 flex-wrap gap-2">
     <a href="{% url 'report_upload' %}" class="btn btn-primary" style="background:var(--color-accent); border-color:var(--color-accent);">📤 Upload New Report</a>
 </div>
 
@@ -50,9 +54,8 @@
     </div>
 </div>
 
-<div class="card mb-4">
-    <div class="card-body py-3">
-        <form method="get" class="filter-row">
+<div class="filter-card mb-4">
+    <form method="get" class="filter-row">
             <div class="row g-2 align-items-end">
                 <div class="col-12 col-md-3">
                     <select name="report_type" class="form-select form-select-sm">
@@ -74,11 +77,11 @@
                 </div>
             </div>
         </form>
-    </div>
 </div>
 
 <div class="card">
     <div class="card-body p-0">
+        <div class="table-container">
         <div class="table-responsive">
             <table class="table table-sticky-header mb-0">
                 <thead>
@@ -115,12 +118,16 @@
                         </td>
                     </tr>
                     {% empty %}
-                    <tr>
-                        <td colspan="4" class="text-center text-muted py-4">No reports found matching your filters.</td>
-                    </tr>
+                    <tr><td colspan="99">
+                        <div class="empty-state">
+                            <span class="empty-icon">📄</span>
+                            <p>No reports found matching your filters.</p>
+                        </div>
+                    </td></tr>
                     {% endfor %}
                 </tbody>
             </table>
+        </div>
         </div>
     </div>
 </div>

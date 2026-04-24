@@ -48,12 +48,14 @@
 {% endblock %}
 
 {% block content %}
-<h1 class="page-heading">🔩 Weld Inspection Records</h1>
+<div class="page-header">
+    <h2>📋 Weld List</h2>
+    <p class="page-subtitle">All weld inspection records for TVA Barkley Dam</p>
+</div>
 
 <!-- Filters -->
-<div class="card mb-4">
-    <div class="card-body py-3">
-        <form method="get" class="filter-row">
+<div class="filter-card mb-4">
+    <form method="get" class="filter-row">
             <!-- Row 1: Search, Section, Side, Weld Type, Pass/Fail, Report -->
             <div class="row g-2 align-items-end mb-2">
                 <div class="col-12 col-md-4 col-lg-3">
@@ -126,7 +128,6 @@
                 </div>
             </div>
         </form>
-    </div>
 </div>
 
 <!-- Summary Stats -->
@@ -164,6 +165,7 @@
 <!-- Weld Table -->
 <div class="card">
     <div class="card-body p-0">
+        <div class="table-container">
         <div class="table-responsive">
             <table class="table table-sticky-header mb-0">
                 <thead>
@@ -234,12 +236,16 @@
                         </td>
                     </tr>
                     {% empty %}
-                    <tr>
-                        <td colspan="10" class="text-center text-muted py-4">No welds found matching your filters.</td>
-                    </tr>
+                    <tr><td colspan="99">
+                        <div class="empty-state">
+                            <span class="empty-icon">🔩</span>
+                            <p>No welds match your current filters.</p>
+                        </div>
+                    </td></tr>
                     {% endfor %}
                 </tbody>
             </table>
+        </div>
         </div>
     </div>
 </div>

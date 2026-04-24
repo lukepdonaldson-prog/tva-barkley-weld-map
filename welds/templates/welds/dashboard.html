@@ -65,11 +65,9 @@
 {% endblock %}
 
 {% block content %}
-<div class="d-flex flex-wrap align-items-end justify-content-between mb-3 gap-2">
-    <div>
-        <h1 class="h3 mb-1">📊 Project Dashboard</h1>
-        <p class="dashboard-subtitle mb-0">TVA Barkley Dam — Gate Repair Weld Inspection</p>
-    </div>
+<div class="page-header">
+    <h2>📊 Project Dashboard</h2>
+    <p class="page-subtitle">TVA Barkley Dam — Gate Repair Weld Inspection · Live Overview</p>
 </div>
 
 <div class="row g-3 mb-4">
@@ -120,8 +118,8 @@
 <div class="row g-3 mb-4">
     <div class="col-lg-5">
         <div class="card chart-card">
+            <div class="card-header card-header-accent">Inspection Status Overview</div>
             <div class="card-body">
-                <h5 class="card-title mb-3">Inspection Status Overview</h5>
                 <div class="donut-wrap">
                     <canvas id="donutChart"></canvas>
                     <div class="donut-center-text">{{ pass_rate }}% Pass Rate</div>
@@ -131,8 +129,8 @@
     </div>
     <div class="col-lg-7">
         <div class="card chart-card">
+            <div class="card-header card-header-accent">Pass / Fail by Section</div>
             <div class="card-body">
-                <h5 class="card-title mb-3">Pass / Fail by Section</h5>
                 <div class="section-chart-scroll">
                     <div class="section-chart-inner">
                         <canvas id="sectionBarChart"></canvas>
@@ -183,8 +181,9 @@
 </div>
 
 <div class="card">
+    <div class="card-header card-header-accent">Recently Updated Welds</div>
     <div class="card-body">
-        <h5 class="card-title mb-3">Recently Updated Welds</h5>
+        <div class="table-container">
         <div class="table-responsive">
             <table class="table mb-0">
                 <thead>
@@ -218,6 +217,7 @@
                     {% endfor %}
                 </tbody>
             </table>
+        </div>
         </div>
         <div class="text-end mt-2">
             <a href="/welds/" class="section-link">View all welds →</a>

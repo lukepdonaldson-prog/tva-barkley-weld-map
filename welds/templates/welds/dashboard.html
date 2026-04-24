@@ -74,42 +74,45 @@
     <div class="col-6 col-md-4 col-xl-2">
         <div class="stat-card stat-primary h-100">
             <span class="stat-icon">🔩</span>
-            <div class="stat-value">{{ total_welds }}</div>
+            <div class="stat-value" data-target="{{ total_welds }}">{{ total_welds }}</div>
             <div class="stat-label">Total Welds</div>
         </div>
     </div>
     <div class="col-6 col-md-4 col-xl-2">
         <div class="stat-card stat-success h-100">
             <span class="stat-icon">✅</span>
-            <div class="stat-value">{{ pass_count }}</div>
+            <div class="stat-value" data-target="{{ pass_count }}">{{ pass_count }}</div>
             <div class="stat-label">Pass</div>
         </div>
     </div>
     <div class="col-6 col-md-4 col-xl-2">
         <div class="stat-card stat-danger h-100">
             <span class="stat-icon">❌</span>
-            <div class="stat-value">{{ fail_count }}</div>
+            <div class="stat-value" data-target="{{ fail_count }}">{{ fail_count }}</div>
             <div class="stat-label">Fail</div>
         </div>
     </div>
     <div class="col-6 col-md-4 col-xl-2">
         <div class="stat-card stat-info h-100">
             <span class="stat-icon">📈</span>
-            <div class="stat-value">{{ pass_rate }}%</div>
+            <div class="stat-value" data-target="{{ pass_rate }}" data-percent="true">{{ pass_rate }}%</div>
             <div class="stat-label">Pass Rate</div>
+            <div class="pass-rate-bar-wrap">
+                <div class="pass-rate-bar" data-width="{{ pass_rate }}"></div>
+            </div>
         </div>
     </div>
     <div class="col-6 col-md-4 col-xl-2">
         <div class="stat-card stat-warning h-100">
             <span class="stat-icon">📷</span>
-            <div class="stat-value">{{ total_photos }}</div>
+            <div class="stat-value" data-target="{{ total_photos }}">{{ total_photos }}</div>
             <div class="stat-label">Photos</div>
         </div>
     </div>
     <div class="col-6 col-md-4 col-xl-2">
         <div class="stat-card stat-primary h-100">
             <span class="stat-icon">📄</span>
-            <div class="stat-value">{{ total_reports }}</div>
+            <div class="stat-value" data-target="{{ total_reports }}">{{ total_reports }}</div>
             <div class="stat-label">NDE Reports</div>
         </div>
     </div>

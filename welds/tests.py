@@ -1,6 +1,8 @@
 import json
+from io import BytesIO
 from datetime import date
 
+import openpyxl
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
@@ -87,3 +89,87 @@ class DashboardViewTests(TestCase):
 
         donut_data = json.loads(response.context['donut_data_json'])
         self.assertEqual(donut_data, {'pass': 1, 'fail': 1, 'not_inspected': 1})
+
+
+class ImportWeldsExcelTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username='import-user',
+            password='secret123',
+        )
+
+    def _build_excel_file(self, rows):
+        workbook = openpyxl.Workbook()
+        worksheet = workbook.active
+        headers = [
+            'Report',
+            'Side',
+            'Section',
+            'Weld ID',
+            'Weld ID2',
+            'Weld ID3',
+            'Weld ID4',
+            'Total Weld Length',
+            'Weld Type',
+            'Inspector',
+            'Date',
+            'Pass_Fail',
+            'Note',
+            'Inspection Stage',
+        ]
+        worksheet.append(headers)
+        for row in rows:
+            worksheet.append(row)
+
+        content = BytesIO()
+        workbook.save(content)
+        content.seek(0)
+        return SimpleUploadedFile(
+            'welds.xlsx',
+            content.read(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+
+    def test_import_creates_duplicate_welds_and_tracks_inspection_stage(self):
+        self.client.force_login(self.user)
+        WeldPhoto.objects.create(
+            photo=SimpleUploadedFile('photo.jpg', b'photo-bytes', content_type='image/jpeg'),
+            section='BX-1.3',
+            report_number='29',
+            original_filename='photo.jpg',
+        )
+
+        excel_file = self._build_excel_file([
+            [29, 'N', 'BX-1.3', 'W-1', '', '', 'FP', 12, 'Fillet', 'Inspector A', '01/02/2026', 'Fail', 'Needs repair', 'Initial Inspection'],
+            [29, 'N', 'BX-1.3', 'W-1', '', '', 'FP', 12, 'Fillet', 'Inspector A', '01/03/2026', 'Pass', 'Ready for repair', 'Prior To Welding'],
+            [29, 'N', 'BX-1.4', 'W-2', '', '', 'FD', 8, 'Fillet', 'Inspector B', '01/04/2026', 'Pass', 'Completed', 'Finished Weld'],
+            [29, 'N', 'BX-1.5', 'W-3', '', '', 'CD', 7, 'Fillet', 'Inspector C', '01/05/2026', 'Pass', 'Support unclear', 'Provided support was not clear enough for the aspects missing'],
+            [29, 'N', 'BX-1.6', 'W-4', '', '', 'LU', 6, 'Fillet', 'Inspector D', '01/06/2026', 'Pass', 'No repair needed', 'N/A'],
+        ])
+
+        response = self.client.post(
+            reverse('import_welds_excel'),
+            {'file': excel_file, 'mode': 'update_add'},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload['status'], 'ok')
+        self.assertEqual(payload['created'], 5)
+        self.assertEqual(payload['deleted'], 0)
+        self.assertEqual(payload['skipped'], 0)
+        self.assertEqual(payload['errors'], [])
+        self.assertNotIn('updated', payload)
+
+        self.assertEqual(Weld.objects.filter(section='BX-1.3', weld_id4='FP').count(), 2)
+        self.assertEqual(
+            set(Weld.objects.values_list('inspection_stage', flat=True)),
+            {
+                'Initial Inspection',
+                'Prior To Welding',
+                'Finished Weld',
+                'Provided support was not clear enough for the aspects missing',
+                'N/A',
+            },
+        )
+        self.assertEqual(WeldPhoto.objects.count(), 1)

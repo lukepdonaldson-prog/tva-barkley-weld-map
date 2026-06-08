@@ -3,6 +3,17 @@ from django.db import models
 
 class Weld(models.Model):
     """Model representing a weld inspection record."""
+    INSPECTION_STAGE_CHOICES = [
+        ('Initial Inspection', 'Initial Inspection'),
+        ('Prior To Welding', 'Prior To Welding'),
+        ('Finished Weld', 'Finished Weld'),
+        (
+            'Provided support was not clear enough for the aspects missing',
+            'Provided support was not clear enough for the aspects missing',
+        ),
+        ('N/A', 'N/A'),
+    ]
+
     report = models.IntegerField()
     side = models.CharField(max_length=50)
     section = models.CharField(max_length=100, db_index=True)
@@ -28,13 +39,16 @@ class Weld(models.Model):
     repair_inspection_date = models.DateField(null=True, blank=True)
     weld_process = models.CharField(max_length=100, blank=True)
     note = models.TextField(blank=True)
+    inspection_stage = models.CharField(
+        max_length=100,
+        blank=True,
+        default='',
+        choices=INSPECTION_STAGE_CHOICES,
+    )
     validation_note = models.TextField(blank=True, default='')
     validation_cleared = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        unique_together = ['section', 'weld_id4']
 
     def __str__(self):
         return f"{self.section} - {self.weld_id4}"

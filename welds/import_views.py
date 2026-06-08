@@ -198,7 +198,7 @@ def import_welds_excel(request):
             status=400,
         )
 
-    # Import mode: "replace_all" deletes all existing welds first; "update_add" (default) only updates/adds
+    # Import mode: "replace_all" deletes all existing welds first; "update_add" (default) only adds
     mode = request.POST.get('mode', 'update_add')
 
     try:
@@ -238,7 +238,6 @@ def import_welds_excel(request):
         deleted_count, _ = Weld.objects.all().delete()
 
     created_count = 0
-    updated_count = 0
     skipped_count = 0
     errors = []
 
@@ -277,25 +276,18 @@ def import_welds_excel(request):
             'repair_inspection_date': _to_date(get(row, 'Repair Inspection Date')),
             'weld_process': _to_string(get(row, 'Weld Process')),
             'note': _to_string(get(row, 'Note')),
+            'inspection_stage': _to_string(get(row, 'Inspection Stage')),
         }
 
         try:
-            _, created = Weld.objects.update_or_create(
-                section=weld_data['section'],
-                weld_id4=weld_data['weld_id4'],
-                defaults=weld_data,
-            )
-            if created:
-                created_count += 1
-            else:
-                updated_count += 1
+            Weld.objects.create(**weld_data)
+            created_count += 1
         except Exception as e:
             errors.append(f'Row {row_num}: {e}')
 
     return JsonResponse({
         'status': 'ok',
         'created': created_count,
-        'updated': updated_count,
         'deleted': deleted_count,
         'skipped': skipped_count,
         'errors': errors,

@@ -18,17 +18,18 @@ from django.http import HttpResponse
 
 
 EXPORT_COLUMNS = [
-    ("section",      "Section"),
-    ("weld_id4",     "Weld ID"),
-    ("side",         "Side"),
-    ("weld_type",    "Weld Type"),
-    ("weld_size",    "Weld Size"),
-    ("pass_fail",    "Pass/Fail"),
-    ("report",       "Report"),
-    ("date",         "Date"),
-    ("inspector",    "Inspector"),
-    ("repair_welder","Repair Welder"),
-    ("note",         "Note"),
+    ("section",          "Section"),
+    ("weld_id4",         "Weld ID"),
+    ("side",             "Side"),
+    ("weld_type",        "Weld Type"),
+    ("inspection_stage", "Inspection Stage"),
+    ("weld_size",        "Weld Size"),
+    ("pass_fail",        "Pass/Fail"),
+    ("report",           "Report"),
+    ("date",             "Date"),
+    ("inspector",        "Inspector"),
+    ("repair_welder",    "Repair Welder"),
+    ("note",             "Note"),
 ]
 
 
@@ -153,7 +154,7 @@ def generate_pdf_response(queryset, filename, title, filters_desc=""):
         elif pf == "fail":
             pass_fail_rows.append((row_idx, "fail"))
 
-    col_widths = [2.5*cm, 2*cm, 1.5*cm, 2.5*cm, 1.8*cm, 1.8*cm, 1.8*cm, 1.8*cm, 3*cm, 3*cm, 4*cm]
+    col_widths = [2.5*cm, 2*cm, 1.5*cm, 2.5*cm, 3*cm, 1.8*cm, 1.8*cm, 1.8*cm, 1.8*cm, 3*cm, 3*cm, 4*cm]
 
     style_cmds = [
         ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1F4E79")),
@@ -170,13 +171,13 @@ def generate_pdf_response(queryset, filename, title, filters_desc=""):
         ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
     ]
 
-    # Color-code Pass/Fail column (index 5)
+    # Color-code Pass/Fail column (index 6)
     for row_idx, status in pass_fail_rows:
         fill = pass_fill if status == "pass" else fail_fill
         text_color = colors.HexColor("#276221") if status == "pass" else colors.HexColor("#9C0006")
-        style_cmds.append(("BACKGROUND", (5, row_idx), (5, row_idx), fill))
-        style_cmds.append(("TEXTCOLOR", (5, row_idx), (5, row_idx), text_color))
-        style_cmds.append(("FONTNAME", (5, row_idx), (5, row_idx), "Helvetica-Bold"))
+        style_cmds.append(("BACKGROUND", (6, row_idx), (6, row_idx), fill))
+        style_cmds.append(("TEXTCOLOR", (6, row_idx), (6, row_idx), text_color))
+        style_cmds.append(("FONTNAME", (6, row_idx), (6, row_idx), "Helvetica-Bold"))
 
     tbl = Table(table_data, colWidths=col_widths, repeatRows=1)
     tbl.setStyle(TableStyle(style_cmds))

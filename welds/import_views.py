@@ -52,13 +52,16 @@ def _shorten_filename(filename, max_base=80):
 # Excel helper utilities (openpyxl-based, no pandas)
 # ---------------------------------------------------------------------------
 
-def _to_int_or_default(val, default=0):
-    if val is None or val == '':
-        return default
+def _to_int_or_default(val, default=0, field_name='field', row_num=None):
+    if val is None or (isinstance(val, str) and val.strip() == ''):
+        return default, None
     try:
-        return int(float(val))
+        return int(float(val)), None
     except (ValueError, TypeError):
-        return default
+        error_msg = f"Could not convert {field_name} value '{val}' to integer"
+        if row_num:
+            error_msg = f'Row {row_num}: {error_msg}'
+        return default, error_msg
 
 
 def _to_float_or_none(val):
@@ -73,6 +76,16 @@ def _to_float_or_none(val):
 def _to_string(val):
     if val is None:
         return ''
+    return str(val).strip()
+
+
+def _to_excel_identifier_string(val):
+    if val is None:
+        return ''
+    if isinstance(val, int):
+        return str(val)
+    if isinstance(val, float) and val.is_integer():
+        return str(int(val))
     return str(val).strip()
 
 
@@ -249,14 +262,24 @@ def import_welds_excel(request):
             continue
 
         weld_id4 = _to_string(get(row, 'Weld ID4'))
+        report_val = get(row, 'Report')
+        report_int, report_error = _to_int_or_default(
+            report_val,
+            default=0,
+            field_name='Report',
+            row_num=row_num,
+        )
+
+        if report_error and report_val not in (None, '', 0, '0'):
+            errors.append(f'⚠️ {report_error} (Original value: "{report_val}", Section: {section})')
 
         weld_data = {
-            'report': _to_int_or_default(get(row, 'Report'), 0),
+            'report': report_int,
             'side': _to_string(get(row, 'Side')),
             'section': section,
-            'weld_id': _to_string(get(row, 'Weld ID')),
-            'weld_id2': _to_string(get(row, 'Weld ID2')),
-            'weld_id3': _to_string(get(row, 'Weld ID3')),
+            'weld_id': _to_excel_identifier_string(get(row, 'Weld ID')),
+            'weld_id2': _to_excel_identifier_string(get(row, 'Weld ID2')),
+            'weld_id3': _to_excel_identifier_string(get(row, 'Weld ID3')),
             'weld_id4': weld_id4,
             'estimated_repair_length': _to_float_or_none(get(row, 'Estimated Repair Length')),
             'total_weld_length': _to_float_or_none(get(row, 'Total Weld Length')),
@@ -285,10 +308,14 @@ def import_welds_excel(request):
         except Exception as e:
             errors.append(f'Row {row_num}: {e}')
 
+    warnings = [e for e in errors if '⚠️' in e]
+    hard_errors = [e for e in errors if '⚠️' not in e]
+
     return JsonResponse({
         'status': 'ok',
         'created': created_count,
         'deleted': deleted_count,
         'skipped': skipped_count,
-        'errors': errors,
+        'errors': hard_errors,
+        'warnings': warnings,
     })

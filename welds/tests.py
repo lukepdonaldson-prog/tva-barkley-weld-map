@@ -159,6 +159,7 @@ class ImportWeldsExcelTests(TestCase):
         self.assertEqual(payload['deleted'], 0)
         self.assertEqual(payload['skipped'], 0)
         self.assertEqual(payload['errors'], [])
+        self.assertEqual(payload['warnings'], [])
         self.assertNotIn('updated', payload)
 
         self.assertEqual(Weld.objects.filter(section='BX-1.3', weld_id4='FP').count(), 2)
@@ -173,3 +174,64 @@ class ImportWeldsExcelTests(TestCase):
             },
         )
         self.assertEqual(WeldPhoto.objects.count(), 1)
+
+    def test_import_converts_float_like_report_values_without_warning(self):
+        self.client.force_login(self.user)
+
+        excel_file = self._build_excel_file([
+            ['11.0', 'N', 'BX-2.1', 11.0, 12.0, 13.0, 'FP', 12, 'Fillet', 'Inspector A', '01/02/2026', 'Pass', '', 'Initial Inspection'],
+        ])
+
+        response = self.client.post(
+            reverse('import_welds_excel'),
+            {'file': excel_file, 'mode': 'update_add'},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload['errors'], [])
+        self.assertEqual(payload['warnings'], [])
+        weld = Weld.objects.get(section='BX-2.1')
+        self.assertEqual(weld.report, 11)
+        self.assertEqual(weld.weld_id, '11')
+        self.assertEqual(weld.weld_id2, '12')
+        self.assertEqual(weld.weld_id3, '13')
+
+    def test_import_defaults_blank_report_to_zero_without_warning(self):
+        self.client.force_login(self.user)
+
+        excel_file = self._build_excel_file([
+            ['', 'N', 'BX-2.2', 'W-6', '', '', 'FD', 10, 'Fillet', 'Inspector B', '01/03/2026', 'Pass', '', 'Initial Inspection'],
+        ])
+
+        response = self.client.post(
+            reverse('import_welds_excel'),
+            {'file': excel_file, 'mode': 'update_add'},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload['errors'], [])
+        self.assertEqual(payload['warnings'], [])
+        self.assertEqual(Weld.objects.get(section='BX-2.2').report, 0)
+
+    def test_import_warns_when_report_value_cannot_be_converted(self):
+        self.client.force_login(self.user)
+
+        excel_file = self._build_excel_file([
+            ['not-a-number', 'N', 'BX-2.3', 'W-7', '', '', 'CD', 9, 'Fillet', 'Inspector C', '01/04/2026', 'Fail', '', 'Initial Inspection'],
+        ])
+
+        response = self.client.post(
+            reverse('import_welds_excel'),
+            {'file': excel_file, 'mode': 'update_add'},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload['errors'], [])
+        self.assertEqual(
+            payload['warnings'],
+            ['⚠️ Row 2: Could not convert Report value \'not-a-number\' to integer (Original value: "not-a-number", Section: BX-2.3)'],
+        )
+        self.assertEqual(Weld.objects.get(section='BX-2.3').report, 0)

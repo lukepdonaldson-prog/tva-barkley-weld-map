@@ -57,6 +57,34 @@
         border: 1px solid #dc3545;
         color: #721c24;
     }
+    .results-box.warning {
+        background: #fff7e6;
+        border: 1px solid #f0ad4e;
+        color: #8a5a00;
+    }
+    .results-section {
+        margin-top: 0.75rem;
+        padding: 0.75rem 1rem;
+        border-radius: var(--radius);
+        font-size: 0.88rem;
+    }
+    .results-section.warning {
+        background: #fff7e6;
+        border: 1px solid #f0ad4e;
+        color: #8a5a00;
+    }
+    .results-section.danger {
+        background: #fdf0f1;
+        border: 1px solid #dc3545;
+        color: #721c24;
+    }
+    .results-section ul {
+        margin: 0.5rem 0 0;
+        padding-left: 1.25rem;
+    }
+    .results-section li {
+        margin-bottom: 0.25rem;
+    }
     .file-list {
         margin-top: 0.75rem;
         max-height: 160px;
@@ -476,6 +504,7 @@
         excelProgLbl.textContent = `0 / ${total}`;
 
         let totalCreated = 0, totalUpdated = 0, totalSkipped = 0, totalDeleted = 0;
+        const allWarnings = [];
         const allErrors = [];
 
         for (const file of files) {
@@ -495,6 +524,7 @@
                     totalUpdated += data.updated || 0;
                     totalSkipped += data.skipped || 0;
                     totalDeleted += data.deleted || 0;
+                    if (data.warnings && data.warnings.length) allWarnings.push(...data.warnings);
                     if (data.errors && data.errors.length) allErrors.push(...data.errors);
                     const deletedNote = data.deleted ? `, ${data.deleted} deleted` : '';
                     addListItem(excelFileList,
@@ -514,8 +544,10 @@
             excelProgLbl.textContent = `${done} / ${total}`;
         }
 
-        const cls = allErrors.length === 0 ? 'success' : 'danger';
+        const cls = allErrors.length ? 'danger' : (allWarnings.length ? 'warning' : 'success');
         const deletedLine = totalDeleted > 0 ? `<br>Deleted (replaced): <strong>${totalDeleted}</strong>` : '';
+        const warningsLine = allWarnings.length ? `<br><span style="color:#8a5a00;">⚠️ ${allWarnings.length} warning(s) — see below</span>` : '';
+        const errorsLine = allErrors.length ? `<br><span class="text-danger">❌ ${allErrors.length} error(s) — see below</span>` : '';
         excelResults.innerHTML = `
             <div class="results-box ${cls}">
                 <strong>Import complete</strong><br>
@@ -523,18 +555,36 @@
                 Updated: <strong>${totalUpdated}</strong> &nbsp;
                 Skipped: <strong>${totalSkipped}</strong>
                 ${deletedLine}
-                ${allErrors.length ? `<br><span class="text-danger">${allErrors.length} error(s) — see list below</span>` : ''}
-            </div>`;
+                ${warningsLine}
+                ${errorsLine}
+            </div>
+            ${renderResultsSection('Warnings', allWarnings, 'warning', '⚠️')}
+            ${renderResultsSection('Errors', allErrors, 'danger', '❌')}`;
     }
 
     // -----------------------------------------------------------------------
     // Utility
     // -----------------------------------------------------------------------
+    function renderResultsSection(title, items, cls, icon) {
+        if (!items.length) return '';
+        return `
+            <div class="results-section ${cls}">
+                <strong>${icon} ${title}</strong>
+                <ul>${items.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>
+            </div>`;
+    }
+
     function addListItem(ul, text, cls) {
         const li = document.createElement('li');
         li.textContent = text;
         if (cls) li.classList.add(cls);
         ul.appendChild(li);
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 
 })();

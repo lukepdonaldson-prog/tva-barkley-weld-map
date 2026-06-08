@@ -15,6 +15,7 @@ from reportlab.lib.units import cm
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 
 from django.http import HttpResponse
+from django.db.models import Sum, Count
 
 
 EXPORT_COLUMNS = [
@@ -52,6 +53,16 @@ def generate_excel_response(queryset, filename):
         cell.fill = header_fill
         cell.alignment = center
 
+    # Calculate summary aggregates before iterating
+    aggregates = queryset.aggregate(
+        total_count=Count('id'),
+        total_repair_length=Sum('estimated_repair_length'),
+        total_weld_length=Sum('total_weld_length'),
+    )
+    total_count = aggregates['total_count'] or 0
+    total_repair_length = aggregates['total_repair_length'] or 0.0
+    total_weld_length = aggregates['total_weld_length'] or 0.0
+
     # Data rows
     for row_idx, weld in enumerate(queryset, start=2):
         for col_idx, (field, _) in enumerate(EXPORT_COLUMNS, start=1):
@@ -68,6 +79,23 @@ def generate_excel_response(queryset, filename):
             if cell.value:
                 max_len = max(max_len, len(str(cell.value)))
         ws.column_dimensions[col_letter].width = min(max_len + 4, 50)
+
+    # Summary section
+    summary_start_row = ws.max_row + 2
+    summary_label_fill = PatternFill(fill_type="solid", fgColor="D9E1F2")
+    summary_label_font = Font(bold=True)
+
+    summary_rows = [
+        ("Total Welds", total_count),
+        ("Total Repair Length (ft)", round(total_repair_length, 1)),
+        ("Total Weld Length (ft)", round(total_weld_length, 1)),
+    ]
+    for i, (label, value) in enumerate(summary_rows):
+        label_cell = ws.cell(row=summary_start_row + i, column=1, value=label)
+        label_cell.font = summary_label_font
+        label_cell.fill = summary_label_fill
+        value_cell = ws.cell(row=summary_start_row + i, column=2, value=value)
+        value_cell.font = Font(bold=True)
 
     # Write to buffer
     buffer = io.BytesIO()
@@ -182,6 +210,42 @@ def generate_pdf_response(queryset, filename, title, filters_desc=""):
     tbl = Table(table_data, colWidths=col_widths, repeatRows=1)
     tbl.setStyle(TableStyle(style_cmds))
     story.append(tbl)
+
+    # Summary section
+    aggregates = queryset.aggregate(
+        total_count=Count('id'),
+        total_repair_length=Sum('estimated_repair_length'),
+        total_weld_length=Sum('total_weld_length'),
+    )
+    total_count = aggregates['total_count'] or 0
+    total_repair_length = aggregates['total_repair_length'] or 0.0
+    total_weld_length = aggregates['total_weld_length'] or 0.0
+
+    story.append(Spacer(1, 0.5 * cm))
+    summary_style = ParagraphStyle(
+        "SummaryLabel",
+        parent=styles["Normal"],
+        fontSize=9,
+        textColor=colors.HexColor("#1F4E79"),
+        spaceAfter=2,
+    )
+    summary_data = [
+        [Paragraph("<b>Summary</b>", summary_style), ""],
+        [Paragraph("Total Welds", summary_style), Paragraph(str(total_count), summary_style)],
+        [Paragraph("Total Repair Length (ft)", summary_style), Paragraph(f"{total_repair_length:.1f}", summary_style)],
+        [Paragraph("Total Weld Length (ft)", summary_style), Paragraph(f"{total_weld_length:.1f}", summary_style)],
+    ]
+    summary_tbl = Table(summary_data, colWidths=[5 * cm, 3 * cm])
+    summary_tbl.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#D9E1F2")),
+        ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
+        ("FONTSIZE", (0, 0), (-1, -1), 9),
+        ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#CCCCCC")),
+        ("TOPPADDING", (0, 0), (-1, -1), 3),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F5F5F5")]),
+    ]))
+    story.append(summary_tbl)
 
     doc.build(story)
     buffer.seek(0)

@@ -7,7 +7,7 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, get_object_or_404
 from welds.models import Weld, WeldPhoto
 from django.core.paginator import Paginator
-from django.db.models import Q
+from django.db.models import Q, Sum
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from welds.export_utils import generate_excel_response, generate_pdf_response
@@ -86,6 +86,14 @@ def qa_dashboard(request):
     pass_count = welds.filter(pass_fail__iexact='pass').count()
     fail_count = welds.filter(pass_fail__iexact='fail').count()
 
+    # Calculate total repair and weld lengths for filtered welds
+    length_aggregates = welds.aggregate(
+        total_repair_length=Sum('estimated_repair_length'),
+        total_weld_length=Sum('total_weld_length'),
+    )
+    total_repair_length = length_aggregates['total_repair_length'] or 0.0
+    total_weld_length = length_aggregates['total_weld_length'] or 0.0
+
     # Count of incomplete welds (missing critical fields, not cleared) matching current filters
     from django.db.models import Q as _Q
     _incomplete_q = (
@@ -111,6 +119,8 @@ def qa_dashboard(request):
         'pass_count': pass_count,
         'fail_count': fail_count,
         'incomplete_count': incomplete_count,
+        'total_repair_length': total_repair_length,
+        'total_weld_length': total_weld_length,
         'sections': sections,
         'reports': reports,
         'statuses': statuses,

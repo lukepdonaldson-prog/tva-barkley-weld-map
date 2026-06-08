@@ -40,6 +40,7 @@ def _apply_weld_filters(request):
     date_from = request.GET.get('date_from')
     date_to = request.GET.get('date_to')
     inspector = request.GET.get('inspector')
+    inspection_stage = request.GET.get('inspection_stage')
 
     queryset = Weld.objects.all()
     if side:
@@ -60,6 +61,8 @@ def _apply_weld_filters(request):
         queryset = queryset.filter(date__lte=date_to)
     if inspector:
         queryset = queryset.filter(inspector=inspector)
+    if inspection_stage:
+        queryset = queryset.filter(inspection_stage=inspection_stage)
     if search:
         queryset = queryset.filter(
             Q(section__icontains=search) |
@@ -76,6 +79,7 @@ def _build_filters_desc(request):
     parts = []
     for key, label in [('side', 'Side'), ('section', 'Section'), ('weld_type', 'Type'),
                        ('pass_fail', 'Status'), ('report', 'Report'), ('inspector', 'Inspector'),
+                       ('inspection_stage', 'Stage'),
                        ('date_from', 'From'), ('date_to', 'To'), ('search', 'Search')]:
         val = request.GET.get(key)
         if val:
@@ -103,6 +107,7 @@ def weld_list(request):
     pass_fail_choices = Weld.objects.values_list('pass_fail', flat=True).distinct()
     sections = Weld.objects.values_list('section', flat=True).order_by('section').distinct()
     inspectors = Weld.objects.values_list('inspector', flat=True).order_by('inspector').distinct().exclude(inspector='')
+    stages = Weld.objects.values_list('inspection_stage', flat=True).order_by('inspection_stage').distinct().exclude(inspection_stage='')
 
     # Paginate results
     paginator = Paginator(queryset, 50)
@@ -119,6 +124,8 @@ def weld_list(request):
         'pass_fail_choices': pass_fail_choices,
         'sections': sections,
         'inspectors': inspectors,
+        'stages': stages,
+        'selected_stage': request.GET.get('inspection_stage', ''),
     }
 
     return render(request, 'welds/weld_list.html', context)

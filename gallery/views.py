@@ -29,6 +29,7 @@ def _apply_qa_filters(request):
     date_from = request.GET.get('date_from', '')
     date_to = request.GET.get('date_to', '')
     inspector = request.GET.get('inspector', '')
+    inspection_stage = request.GET.get('inspection_stage', '')
 
     if section:
         welds = welds.filter(section=section)
@@ -42,6 +43,8 @@ def _apply_qa_filters(request):
         welds = welds.filter(date__lte=date_to)
     if inspector:
         welds = welds.filter(inspector=inspector)
+    if inspection_stage:
+        welds = welds.filter(inspection_stage=inspection_stage)
     if search:
         welds = welds.filter(
             Q(weld_id4__icontains=search) |
@@ -56,6 +59,7 @@ def _build_qa_filters_desc(request):
     parts = []
     for key, label in [('section', 'Section'), ('report', 'Report'),
                        ('pass_fail', 'Status'), ('inspector', 'Inspector'),
+                       ('inspection_stage', 'Stage'),
                        ('date_from', 'From'), ('date_to', 'To'), ('search', 'Search')]:
         val = request.GET.get(key)
         if val:
@@ -74,6 +78,7 @@ def qa_dashboard(request):
     date_from = request.GET.get('date_from', '')
     date_to = request.GET.get('date_to', '')
     inspector = request.GET.get('inspector', '')
+    inspection_stage = request.GET.get('inspection_stage', '')
 
     count_all = Weld.objects.count()
     count_filtered = welds.count()
@@ -97,6 +102,7 @@ def qa_dashboard(request):
     reports = Weld.objects.values_list('report', flat=True).order_by('report').distinct()
     statuses = Weld.objects.values_list('pass_fail', flat=True).order_by('pass_fail').distinct().exclude(pass_fail='')
     inspectors = Weld.objects.values_list('inspector', flat=True).order_by('inspector').distinct().exclude(inspector='')
+    stages = Weld.objects.values_list('inspection_stage', flat=True).order_by('inspection_stage').distinct().exclude(inspection_stage='')
 
     return render(request, 'gallery/qa_dashboard.html', {
         'welds': welds_page,
@@ -109,11 +115,13 @@ def qa_dashboard(request):
         'reports': reports,
         'statuses': statuses,
         'inspectors': inspectors,
+        'stages': stages,
         'selected_section': section,
         'selected_report': report,
         'selected_status': pass_fail,
         'search': search,
         'selected_inspector': inspector,
+        'selected_stage': inspection_stage,
         'date_from': date_from,
         'date_to': date_to,
     })

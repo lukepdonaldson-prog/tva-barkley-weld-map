@@ -235,3 +235,71 @@ class ImportWeldsExcelTests(TestCase):
             ['⚠️ Row 2: Could not convert Report value \'not-a-number\' to integer (Original value: "not-a-number", Section: BX-2.3)'],
         )
         self.assertEqual(Weld.objects.get(section='BX-2.3').report, 0)
+
+
+class WeldDetailNavigationTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username='nav-user',
+            password='secret123',
+        )
+        self.client.force_login(self.user)
+
+    def _create_weld(self, **overrides):
+        defaults = {
+            'report': 1,
+            'side': 'N',
+            'section': 'AX',
+            'weld_id': 'W-1',
+            'weld_id4': 'AX-1',
+            'inspector': 'Inspector',
+            'date': date(2026, 1, 1),
+            'pass_fail': 'Pass',
+            'weld_type': 'Fillet',
+            'total_weld_length': 10.0,
+        }
+        defaults.update(overrides)
+        return Weld.objects.create(**defaults)
+
+    def test_filtered_navigation_uses_session_ids(self):
+        first = self._create_weld(section='BX-10', weld_id='W-1', weld_id4='BX-10-1')
+        self._create_weld(section='AX-1', weld_id='W-2', weld_id4='AX-1-2')
+        last = self._create_weld(section='BX-10', weld_id='W-3', weld_id4='BX-10-3')
+
+        self.client.get(reverse('weld_list'), {'section': 'BX-10'})
+        self.assertEqual(
+            self.client.session.get('filtered_weld_ids'),
+            [first.id, last.id],
+        )
+
+        response = self.client.get(reverse('weld_detail', args=[first.id]))
+        self.assertIsNone(response.context['prev_weld_id'])
+        self.assertEqual(response.context['next_weld_id'], last.id)
+
+        response = self.client.get(reverse('weld_detail', args=[last.id]))
+        self.assertEqual(response.context['prev_weld_id'], first.id)
+        self.assertIsNone(response.context['next_weld_id'])
+
+    def test_weld_list_without_filters_clears_filtered_navigation_session(self):
+        first = self._create_weld(section='BX-10', weld_id='W-1', weld_id4='BX-10-1')
+        self._create_weld(section='AX-1', weld_id='W-2', weld_id4='AX-1-2')
+        last = self._create_weld(section='BX-10', weld_id='W-3', weld_id4='BX-10-3')
+
+        self.client.get(reverse('weld_list'), {'section': 'BX-10'})
+        self.assertEqual(self.client.session.get('filtered_weld_ids'), [first.id, last.id])
+
+        self.client.get(reverse('weld_list'))
+        self.assertNotIn('filtered_weld_ids', self.client.session)
+
+    def test_navigation_falls_back_when_weld_not_in_filtered_session(self):
+        first = self._create_weld(section='AX-1', weld_id='W-1', weld_id4='AX-1-1')
+        middle = self._create_weld(section='AX-2', weld_id='W-2', weld_id4='AX-2-2')
+        last = self._create_weld(section='AX-3', weld_id='W-3', weld_id4='AX-3-3')
+
+        session = self.client.session
+        session['filtered_weld_ids'] = [first.id, last.id]
+        session.save()
+
+        response = self.client.get(reverse('weld_detail', args=[middle.id]))
+        self.assertEqual(response.context['prev_weld_id'], first.id)
+        self.assertEqual(response.context['next_weld_id'], last.id)

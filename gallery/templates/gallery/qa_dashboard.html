@@ -1,4 +1,5 @@
 {% extends 'welds/base.html' %}
+{% load humanize %}
 
 {% block title %}QA Weld Dashboard — TVA Barkley{% endblock %}
 
@@ -21,28 +22,28 @@
     <div class="col-6 col-md-3">
         <div class="stat-card stat-primary">
             <span class="stat-icon">🔩</span>
-            <div class="stat-value">{{ count_all }}</div>
+            <div class="stat-value">{{ count_all|intcomma }}</div>
             <div class="stat-label">Total Welds</div>
         </div>
     </div>
     <div class="col-6 col-md-3">
         <div class="stat-card stat-info">
             <span class="stat-icon">🔍</span>
-            <div class="stat-value">{{ count_filtered }}</div>
+            <div class="stat-value">{{ count_filtered|intcomma }}</div>
             <div class="stat-label">Filtered</div>
         </div>
     </div>
     <div class="col-6 col-md-3">
         <div class="stat-card stat-success">
             <span class="stat-icon">✅</span>
-            <div class="stat-value">{{ pass_count }}</div>
+            <div class="stat-value">{{ pass_count|intcomma }}</div>
             <div class="stat-label">Pass</div>
         </div>
     </div>
     <div class="col-6 col-md-3">
         <div class="stat-card stat-danger">
             <span class="stat-icon">❌</span>
-            <div class="stat-value">{{ fail_count }}</div>
+            <div class="stat-value">{{ fail_count|intcomma }}</div>
             <div class="stat-label">Fail</div>
         </div>
     </div>
@@ -50,7 +51,7 @@
         <a href="{% url 'incomplete_records' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}" class="text-decoration-none">
             <div class="stat-card stat-warning" style="cursor:pointer;">
                 <span class="stat-icon">⚠️</span>
-                <div class="stat-value">{{ incomplete_count }}</div>
+                <div class="stat-value">{{ incomplete_count|intcomma }}</div>
                 <div class="stat-label">Incomplete</div>
             </div>
         </a>
@@ -58,14 +59,14 @@
     <div class="col-6 col-md-3">
         <div class="stat-card stat-primary">
             <span class="stat-icon">🔧</span>
-            <div class="stat-value">{{ total_repair_length|floatformat:1 }} ft</div>
+            <div class="stat-value">{{ total_repair_length|floatformat:1|intcomma }} in</div>
             <div class="stat-label">Total Repair Length</div>
         </div>
     </div>
     <div class="col-6 col-md-3">
         <div class="stat-card stat-info">
             <span class="stat-icon">📏</span>
-            <div class="stat-value">{{ total_weld_length|floatformat:1 }} ft</div>
+            <div class="stat-value">{{ total_weld_length|floatformat:1|intcomma }} in</div>
             <div class="stat-label">Total Weld Length</div>
         </div>
     </div>

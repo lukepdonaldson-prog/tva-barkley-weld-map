@@ -1,4 +1,5 @@
 {% extends 'welds/base.html' %}
+{% load humanize %}
 
 {% block title %}Weld List — TVA Barkley{% endblock %}
 
@@ -143,35 +144,35 @@
     <div class="col-6 col-md-3">
         <div class="stat-card stat-primary">
             <span class="stat-icon">🔩</span>
-            <div class="stat-value">{{ aggregates.total_count }}</div>
+            <div class="stat-value">{{ aggregates.total_count|intcomma }}</div>
             <div class="stat-label">Total Welds</div>
         </div>
     </div>
     <div class="col-6 col-md-3">
         <div class="stat-card stat-info">
             <span class="stat-icon">📏</span>
-            <div class="stat-value">{{ aggregates.total_weld_length|floatformat:0|default:"0" }}</div>
+            <div class="stat-value">{{ aggregates.total_weld_length|floatformat:0|default:"0"|intcomma }}</div>
             <div class="stat-label">Total Weld Length (in)</div>
         </div>
     </div>
     <div class="col-6 col-md-3">
         <div class="stat-card stat-warning">
             <span class="stat-icon">🔧</span>
-            <div class="stat-value">{{ aggregates.total_repair_length|floatformat:1|default:"0.0" }} ft</div>
+            <div class="stat-value">{{ aggregates.total_repair_length|floatformat:1|default:"0.0"|intcomma }} in</div>
             <div class="stat-label">Total Repair Length</div>
         </div>
     </div>
     <div class="col-6 col-md-3">
         <div class="stat-card stat-success">
             <span class="stat-icon">✅</span>
-            <div class="stat-value">{{ aggregates.pass_count }}</div>
+            <div class="stat-value">{{ aggregates.pass_count|intcomma }}</div>
             <div class="stat-label">Pass</div>
         </div>
     </div>
     <div class="col-6 col-md-3">
         <div class="stat-card stat-danger">
             <span class="stat-icon">❌</span>
-            <div class="stat-value">{{ aggregates.fail_count }}</div>
+            <div class="stat-value">{{ aggregates.fail_count|intcomma }}</div>
             <div class="stat-label">Fail</div>
         </div>
     </div>

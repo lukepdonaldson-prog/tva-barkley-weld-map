@@ -89,7 +89,19 @@ def _build_filters_desc(request):
 
 @login_required
 def weld_list(request):
-    queryset = _apply_weld_filters(request)
+    queryset = _apply_weld_filters(request).order_by('pk')
+    filter_keys = (
+        'side', 'section', 'weld_id', 'weld_type', 'pass_fail', 'report',
+        'search', 'date_from', 'date_to', 'inspector', 'inspection_stage',
+    )
+    has_active_filters = any(request.GET.get(key) for key in filter_keys)
+
+    if request.GET.get('clear_filters') or not has_active_filters:
+        request.session.pop('filtered_weld_ids', None)
+    else:
+        request.session['filtered_weld_ids'] = list(
+            queryset.values_list('id', flat=True)
+        )
 
     # Calculate aggregates, case-insensitive for pass/fail
     aggregates = queryset.aggregate(
@@ -189,17 +201,38 @@ def weld_detail(request, pk):
     # Get single weld
     weld = get_object_or_404(Weld, pk=pk)
 
-    # Get previous and next weld by pk
-    previous_weld = Weld.objects.filter(pk__lt=pk).order_by('-pk').first()
-    next_weld = Weld.objects.filter(pk__gt=pk).order_by('pk').first()
+    filtered_weld_ids = request.session.get('filtered_weld_ids') or []
+    previous_weld_id = None
+    next_weld_id = None
+    use_fallback_navigation = True
+
+    if filtered_weld_ids:
+        try:
+            current_index = filtered_weld_ids.index(weld.pk)
+            use_fallback_navigation = False
+            if current_index > 0:
+                previous_weld_id = filtered_weld_ids[current_index - 1]
+            if current_index < len(filtered_weld_ids) - 1:
+                next_weld_id = filtered_weld_ids[current_index + 1]
+        except ValueError:
+            pass
+
+    if use_fallback_navigation and previous_weld_id is None:
+        previous_weld = Weld.objects.filter(pk__lt=pk).order_by('-pk').first()
+        if previous_weld:
+            previous_weld_id = previous_weld.pk
+    if use_fallback_navigation and next_weld_id is None:
+        next_weld = Weld.objects.filter(pk__gt=pk).order_by('pk').first()
+        if next_weld:
+            next_weld_id = next_weld.pk
 
     # Decode Weld ID4 segments against WeldIdKey lookup table
     weld_id4_decoded = _decode_weld_id4(weld.weld_id4)
 
     context = {
         'weld': weld,
-        'previous_weld': previous_weld,
-        'next_weld': next_weld,
+        'prev_weld_id': previous_weld_id,
+        'next_weld_id': next_weld_id,
         'weld_id4_decoded': weld_id4_decoded,
     }
 

@@ -89,6 +89,7 @@ _PROJECT_DIRS = [
     "weldmap",
     "welds",
     "gallery",
+    "reports",
 ]
 
 _PROJECT_FILES = [
